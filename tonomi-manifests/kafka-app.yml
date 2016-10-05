@@ -1,0 +1,45 @@
+application:
+    interfaces:
+        configuration:
+            "*": bind(application#configuration.*)
+        kafka:
+            "*": bind(application#kafka.*)
+        compute:
+            "*": bind(application#compute.*)
+        control:
+            "*": bind(application#control.*)
+    components: 
+        application:
+            type: scripted.Component 
+            configuration:
+                factory.name: Kafka on marathon Factory
+                factory.launchScript: /kafka/create.py
+                factory.destroyScript: /kafka/destroy.py
+                factory.healthCheckScript: /kafka/healthCheck.py
+                factory.reconfigurationScript: /kafka/reconfigure.py
+                factory.commandScripts:
+                    control.restart: /kafka/restart.py
+                    control.scale: /kafka/scale.py
+            interfaces:
+                configuration:
+                    cpu: configuration(string)
+                    ram: configuration(int)
+                    disk: configuration(int)
+                    instances: configuration(int)
+                    #imageId: configuration(string)
+                    #portMappings: configuration(list<map<string, string>>)
+                    #cmd: configuration(string)
+                    name: configuration(string)
+                kafka:
+                    lbPort: publish-signal(string)
+                    #localPorts: publish-signal(list(string))
+                compute:
+                    ram: publish-signal(string)
+                    cpu: publish-signal(string)
+                    disk: publish-signal(string)
+                    instances: publish-signal(string)
+                    #portMappings: publish-signal(map<string, string>)
+
+                control:
+                    restart: receive-command()
+                    scale: receive-command(int instances)

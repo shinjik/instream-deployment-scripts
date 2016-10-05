@@ -1,0 +1,47 @@
+{
+    "id": "/env/service",
+    "cmd": "env && sleep 300",
+    "cpus": 0.5,
+    "mem": 128.0,
+    "portDefinitions": [
+        { "port": 8080, "protocol": "tcp", "name": "http" }
+    ],
+    "requirePorts": false,
+    "instances": 1,
+    "executor": "",
+    "container": {
+        "type": "DOCKER",
+        "docker": {
+            "image": "",
+            "network": "HOST",
+            "portMappings": [
+                {
+                    "containerPort": 8080,
+                    "hostPort": 0,
+                    "servicePort": 0,
+                    "protocol": "tcp"
+                }
+            ],
+            "privileged": false,
+            "parameters": [
+                { "key": "a-docker-option", "value": "xxx" }
+            ]
+        },
+        "volumes": []
+    },
+    "env": {},
+    
+    "labels": {
+        "environment": "test"
+    },
+    "fetch": [],
+    "dependencies": [],
+    "healthChecks": [],
+    "backoffSeconds": 1,
+    "backoffFactor": 1.15,
+    "maxLaunchDelaySeconds": 3600,
+    "upgradeStrategy": {
+        "minimumHealthCapacity": 0.5,
+        "maximumOverCapacity": 0.2
+    }
+}

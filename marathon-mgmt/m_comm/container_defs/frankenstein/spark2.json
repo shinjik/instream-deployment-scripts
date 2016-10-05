@@ -1,0 +1,52 @@
+{
+    "id": "/frankenstein/spark2",
+    "cpus": 0.75,
+    "mem": 1280,
+    
+    "cmd": "bash ${MESOS_SANDBOX}/streaming-runner.sh",
+    "instances": 1,
+    "container": {
+        "type": "DOCKER",
+        "docker": {
+            "image": "sequenceiq/spark:1.6.0",
+            "network": "BRIDGE",
+            "portMappings": [
+                {
+                    "containerPort": 8088,
+                    "hostPort": 0,
+                    "servicePort": 0,
+                    "protocol": "tcp"
+                },
+                {
+                    "containerPort": 8042,
+                    "hostPort": 0,
+                    "servicePort": 0,
+                    "protocol": "tcp"
+                },
+                {
+                    "containerPort": 4040,
+                    "hostPort": 0,
+                    "servicePort": 0,
+                    "protocol": "tcp"
+                },
+                {
+                    "containerPort": 2122,
+                    "hostPort": 0,
+                    "servicePort": 0,
+                    "protocol": "tcp"
+                }
+            ]
+            
+        }
+    },
+    "env": {
+        "KAFKA_BROKER_LIST": "172.22.4.107:11000",
+        "CASSANDRA_HOST": "172.22.4.36",
+        "CASSANDRA_PORT": "31056",
+        "REDIS_HOST": "172.22.4.36",
+        "REDIS_PORT": "31529"
+    },
+    "fetch": [
+        { "uri": "https://s3-us-west-1.amazonaws.com/streaming-artifacts/in-stream-tweets-analyzer.tar.gz", "executable": false, "cache": false }
+    ]
+}

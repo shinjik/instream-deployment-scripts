@@ -1,0 +1,264 @@
+application:
+  # configuration:
+  #   input.identity: "ubuntu"
+  #   input.scripts_url: "https://s3-us-west-1.amazonaws.com/streaming-artifacts/playbooks.tar.gz"
+  #   configuration.imageId:    "ami-d732f0b7"
+  #   configuration.hardwareId: "t2.micro"
+  #   configuration.locationId: "us-west-2"
+  #   configuration.login:      "ubuntu"
+  #   configuration.group:      "default"
+  interfaces:
+    # configuration:
+    #   imageId:         bind(manager#configuration.imageId)
+    #   hardwareId:      bind(manager#configuration.hardwareId)
+    #   locationId:      bind(manager#configuration.locationId)
+    #   login:           bind(manager#configuration.login)
+    #   group:           bind(manager#configuration.group)
+
+
+      #manager_vm: "bind(manager#configuration.ipAddress)"
+    manager:
+      networks:   "bind(manager#compute.networks)"
+      exec:       "bind(manager#compute.exec)"
+      put-file:   "bind(manager#compute.put-file)"
+      get-file:   "bind(manager#compute.get-file)"
+
+    marathon-manager:
+      Mesos_Manager: "bind(marathon#marathon-manager.Mesos_Manager)"
+      Marathon_URL: "bind(marathon#marathon-manager.Marathon_URL)"
+      scripts_url: "bind(marathon#marathon-manager.scripts_url)"
+
+    actions:
+      list-applications: "bind(marathon#actions.list-applications)"
+      application-details: "bind(marathon#actions.application-details)"
+      create-application: "bind(marathon#actions.create-application)"
+      update-application: "bind(marathon#actions.update-application)"
+      destroy-application: "bind(marathon#actions.destroy-application)"
+      restart-application: "bind(marathon#actions.restart-application)"
+  
+  
+  bindings:
+    - [marathon, manager]
+    
+  components:
+    manager:
+      type: compute.Instance
+    metadata:
+      type: cobalt.common.Constants
+      interfaces:
+        output:
+          application-pic:
+            type: publish-signal(map<string, object>)
+            name: ""
+      configuration:
+        configuration.values:
+          output.application-pic:
+            large: "https://camo.githubusercontent.com/074c27eb3865127b2d8bc616ae16450c0f661780/68747470733a2f2f6d65736f7370686572652e636f6d2f77702d636f6e74656e742f7468656d65732f6d65736f7370686572652f6c6962726172792f696d616765732f636f6d706f6e656e74732f73657276696365732f6d61726174686f6e2e6a7067"
+            small: "http://mesosphere.github.io/presentations/mesos-nutshell-2015/assets/marathon-favicon-64x64.png"
+            small-height: 64
+    marathon:
+      type: workflow.Instance
+      interfaces:
+        manager:
+          networks:        consume-signal(map<string, map<string, string>>)
+          exec:            send-command(string command, int timeout => string stdOut, string stdErr => string stdOut, string stdErr, int exitCode)
+          put-file:   send-command(string filename, bytes payload)
+          get-file:   send-command(string filename => bytes payload)
+
+
+          # manager_vm:
+          #   type: compute.Instance
+          #   name: Manager VM
+
+        actions:
+          list-applications:
+            type: receive-command()
+            name: List running applications
+          application-details:
+            type: receive-command(string application-id)
+            name: Get running application details
+          create-application:
+            type: receive-command(string application-id, string serialized-descriptor)
+            name: Create/run new application
+          update-application:
+            type: receive-command(string application-id, string serialized-descriptor)
+            name: Update running application
+          destroy-application:
+            type: receive-command(string application-id)
+            name: Delete application
+          restart-application:
+            type: receive-command(string application-id)
+            name: Restart running application
+
+        marathon-manager:
+          Mesos_Manager: consume-signal(string)
+          Marathon_URL: consume-signal(string)
+          scripts_url: consume-signal(string)
+
+
+        # result:
+        #   Marathon_URL:
+        #     type: publish-signal(list<string>)
+        #     name: Marathon UI URL
+
+      required: [manager, marathon-manager]
+      configuration:
+        configuration.triggers: {}
+        configuration.workflows:
+          launch:
+            #type: workflow.Instance
+            #interfaces:
+            steps:
+              - get-env-props:
+                  action: getEnvironmentProperties
+                  output:
+                    config: result
+
+              - download-scripts:
+                  action: execrun
+                  precedingPhases: [ get-env-props ]
+                  parameters:
+                      #isSudo: true
+                      roles: [ "manager" ]
+                      command:
+                          - bash
+                          - "-c"
+                          - |
+                                wget "{$.config.marathon-manager.scripts_url}" -O playbooks.tar.gz &&
+                                tar -zxf playbooks.tar.gz
+                          
+            return:
+              - Marathon_URL:
+                  description: "Marathon UI URL"
+                  value: "{$.config.marathon-manager.Marathon_URL}"
+
+          list-applications:
+            steps:
+              - get-env-props:
+                  action: getEnvironmentProperties
+                  output:
+                    props: result
+              - list-applications:
+                  action: execrun
+                  precedingPhases: [ get-env-props ]
+                  parameters:
+                    isSudo: true
+                    roles: [ "manager" ]
+                    command:
+                        - |
+                           cd mesos-ansible/marathon-comm
+                           echo "test"
+                  output:
+                    applications-list: stdout
+
+            return:
+              - applications-list:
+                  description: List of running applications
+                  value: "{$.applications-list}"
+
+          application-details:
+            steps:
+              - get-env-props:
+                  action: getEnvironmentProperties
+                  output:
+                    props: result
+              - get-application-details:
+                  action: execrun
+                  precedingPhases: [ get-env-props ]
+                  parameters:
+                    isSudo: true
+                    roles: [ "manager" ]
+                    command:
+                        - |
+                           cd mesos-ansible/marathon-comm
+                           echo "test"
+                  output:
+                    application-details: stdout
+
+            return:
+              - application-details:
+                  description: Application info
+                  value: "{$.application-details}"
+
+          create-application:
+            steps:
+              - get-env-props:
+                  action: getEnvironmentProperties
+                  output:
+                    props: result
+              - create-application:
+                  action: execrun
+                  precedingPhases: [ get-env-props ]
+                  parameters:
+                    isSudo: true
+                    roles: [ "manager" ]
+                    command:
+                        - |
+                           cd mesos-ansible/marathon-comm
+                           echo "test"
+                  output:
+                    application-details: stdout
+
+            return:
+              - application-details:
+                  description: New application info
+                  value: "{$.application-details}"
+
+          update-application:
+            steps:
+              - get-env-props:
+                  action: getEnvironmentProperties
+                  output:
+                    props: result
+              - create-application:
+                  action: execrun
+                  precedingPhases: [ get-env-props ]
+                  parameters:
+                    isSudo: true
+                    roles: [ "manager" ]
+                    command:
+                        - |
+                           cd mesos-ansible/marathon-comm
+                           echo "test"
+                  output:
+                    application-details: stdout
+
+            return:
+              - application-details:
+                  description: Updated application info
+                  value: "{$.application-details}"
+
+          destroy-application:
+            steps:
+              - get-env-props:
+                  action: getEnvironmentProperties
+                  output:
+                    props: result
+              - destroy-application:
+                  action: execrun
+                  precedingPhases: [ get-env-props ]
+                  parameters:
+                    isSudo: true
+                    roles: [ "manager" ]
+                    command:
+                        - |
+                           cd mesos-ansible/marathon-comm
+                           echo "test"
+          restart-application:
+            steps:
+              - get-env-props:
+                  action: getEnvironmentProperties
+                  output:
+                    props: result
+              - restart-application:
+                  action: execrun
+                  precedingPhases: [ get-env-props ]
+                  parameters:
+                    isSudo: true
+                    roles: [ "manager" ]
+                    command:
+                        - |
+                           cd mesos-ansible/marathon-comm
+                           echo "test"
+
+

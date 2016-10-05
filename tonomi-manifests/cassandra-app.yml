@@ -1,0 +1,46 @@
+application:
+    interfaces:
+        configuration:
+            "*": bind(application#configuration.*)
+        cassandra:
+            "*": bind(application#cassandra.*)
+        compute:
+            "*": bind(application#compute.*)
+        control:
+            "*": bind(application#control.*)
+    components: 
+        application:
+            type: scripted.Component 
+            configuration:
+                factory.name: Cassandra on marathon Factory
+                factory.launchScript: /cassandra/create.py
+                factory.destroyScript: /cassandra/destroy.py
+                factory.healthCheckScript: /cassandra/healthCheck.py
+                factory.reconfigurationScript: /cassandra/reconfigure.py
+                factory.commandScripts:
+                    control.restart: /cassandra/restart.py
+                    control.scale: /cassandra/scale.py
+            interfaces:
+                configuration:
+                    cpu: configuration(string)
+                    ram: configuration(int)
+                    disk: configuration(int)
+                    #instances: configuration(int)
+                    #imageId: configuration(string)
+                    #portMappings: configuration(list<map<string, string>>)
+                    #cmd: configuration(string)
+                    name: configuration(string)
+                cassandra:
+                    nativePort: publish-signal(string)
+                    thriftPort: publish-signal(string)
+                    #localPorts: publish-signal(list(string))
+                compute:
+                    ram: publish-signal(string)
+                    cpu: publish-signal(string)
+                    disk: publish-signal(string)
+                    #instances: publish-signal(string)
+                    #portMappings: publish-signal(map<string, string>)
+
+                control:
+                    restart: receive-command()
+                    scale: receive-command(int instances)

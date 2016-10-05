@@ -1,0 +1,52 @@
+{
+    "id": "/frankenstein/spark-solo",
+    "cpus": 0.75,
+    "mem": 1280,
+    
+    "cmd": "spark-submit --class com.griddynamics.streaming.blueprint.streaming.StreamingMain --master yarn-client --driver-memory 1g --executor-memory 1g --executor-cores 1 ${MESOS_SANDBOX}/streaming-1.0-SNAPSHOT-jar-with-dependencies.jar",
+    "instances": 1,
+    "container": {
+        "type": "DOCKER",
+        "docker": {
+            "image": "sequenceiq/spark:1.6.0",
+            "network": "BRIDGE",
+            "portMappings": [
+                {
+                    "containerPort": 8088,
+                    "hostPort": 0,
+                    "servicePort": 0,
+                    "protocol": "tcp"
+                },
+                {
+                    "containerPort": 8042,
+                    "hostPort": 0,
+                    "servicePort": 0,
+                    "protocol": "tcp"
+                },
+                {
+                    "containerPort": 4040,
+                    "hostPort": 0,
+                    "servicePort": 0,
+                    "protocol": "tcp"
+                },
+                {
+                    "containerPort": 2122,
+                    "hostPort": 0,
+                    "servicePort": 0,
+                    "protocol": "tcp"
+                }
+            ]
+            
+        }
+    },
+    "env": {
+        "KAFKA_BROKER_LIST": "172.22.4.107:11000",
+        "CASSANDRA_HOST": "172.22.4.122",
+        "CASSANDRA_PORT": "31593",
+        "REDIS_HOST": "172.22.4.36",
+        "REDIS_PORT": "31529"
+    },
+    "fetch": [
+        { "uri": "https://s3-us-west-1.amazonaws.com/streaming-artifacts/streaming-1.0-SNAPSHOT-jar-with-dependencies.jar", "executable": false, "cache": false }
+    ]
+}

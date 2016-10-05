@@ -1,0 +1,31 @@
+{
+    "id": "/frankenstein/cassandra-1",
+    "cpus": 0.5,
+    "mem": 512,
+    "disk": 512,
+    
+    "instances": 1,
+    "container": {
+        "type": "DOCKER",
+        "docker": {
+            "image": "poklet/cassandra",
+            "network": "BRIDGE",
+            "portMappings": [
+                {
+                    "containerPort": 9042,
+                    "hostPort": 0,
+                    "servicePort": 19042,
+                    "protocol": "tcp"
+                },
+                {
+                    "containerPort": 9160,
+                    "hostPort": 0,
+                    "servicePort": 19160,
+                    "protocol": "tcp"
+                }
+            ]
+            
+        }
+    }
+}
+ 

@@ -1,0 +1,29 @@
+{
+    "id": "/frankenstein/tw-consumer/st",
+    "cpus": 0.1,
+    "mem": 256,
+    
+    "cmd": "java -cp ${MESOS_SANDBOX}/twitter-consumer-1.0-SNAPSHOT-jar-with-dependencies.jar movieTweets \"Star Trek Beyond\" tweetStream 2016-08-22",
+    "instances": 1,
+    "container": {
+        "type": "DOCKER",
+        "docker": {
+            "image": "java:8",
+            "network": "BRIDGE",
+            "portMappings": [
+                
+            ]
+            
+        }
+    },
+    "env": {
+        "KAFKA_BROKERS": "172.22.4.107:11000",
+        "TWITTER_ACCESS_TOKEN": "763501674954575872-RHja4v19KCowvUfpEPmgoyrQW6kAOZR",
+        "TWITTER_ACCESS_TOKEN_SECRET": "7uMgHH35PQX8pMOVSi7ewqwCOxk6VFeFwi2LG6hd6ECis",
+        "TWITTER_CONSUMER_SECRET": "F8kqEOZAOvq1qYkwe3PlBKcA0fxjxdpntOH7sko8I1wamW6bu5",
+        "TWITTER_CONSUMER_KEY": "oVn4jNTHA4YyUprLEx6YpQ2BQ"
+    },
+    "fetch": [
+        { "uri": "https://s3-us-west-1.amazonaws.com/streaming-artifacts/twitter-consumer-1.0-SNAPSHOT-jar-with-dependencies.jar", "executable": false, "cache": false }
+    ]
+}

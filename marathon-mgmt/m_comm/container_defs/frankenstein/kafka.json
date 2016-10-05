@@ -1,0 +1,31 @@
+{
+    "id": "/frankenstein/kafka",
+    "cpus": 0.5,
+    "mem": 1536,
+    "disk": 512,
+    
+    "instances": 1,
+    "container": {
+        "type": "DOCKER",
+        "docker": {
+            "image": "wurstmeister/kafka",
+            "network": "BRIDGE",
+            "portMappings": [
+                {
+                    "containerPort": 9092,
+                    "hostPort": 0,
+                    "servicePort": 11000,
+                    "protocol": "tcp"
+                }
+            ]
+            
+        }
+    },
+    "env": {
+        "KAFKA_ZOOKEEPER_CONNECT": "172.22.4.107:10001",
+        "KAFKA_CREATE_TOPICS": "events_topic:1:1",
+        "KAFKA_ADVERTISED_HOST_NAME": "172.22.4.107",
+        "KAFKA_ADVERTISED_PORT": "11000",
+        "KAFKA_HEAP_OPTS": "-Xmx512m -Xms512m"
+    }
+}

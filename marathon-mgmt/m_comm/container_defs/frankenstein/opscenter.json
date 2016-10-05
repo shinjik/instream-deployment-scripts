@@ -1,0 +1,24 @@
+{
+    "id": "/frankenstein/opscenter",
+    "cpus": 0.5,
+    "mem": 512,
+    "disk": 512,
+    
+    "instances": 1,
+    "container": {
+        "type": "DOCKER",
+        "docker": {
+            "image": "poklet/opscenter",
+            "network": "BRIDGE",
+            "portMappings": [
+                {
+                    "containerPort": 8888,
+                    "hostPort": 0,
+                    "servicePort": 0,
+                    "protocol": "tcp"
+                }
+            ]
+            
+        }
+    }
+}

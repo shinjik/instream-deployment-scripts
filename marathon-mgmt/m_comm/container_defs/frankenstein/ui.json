@@ -1,0 +1,32 @@
+{
+    "id": "/frankenstein/movies-ui",
+    "cpus": 0.1,
+    "mem": 512,
+    "disk": 2048,
+    
+    "cmd": "cd ${MESOS_SANDBOX}/cinema-chart && npm install && npm start",
+    "instances": 1,
+    "container": {
+        "type": "DOCKER",
+        "docker": {
+            "image": "node",
+            "network": "BRIDGE",
+            "portMappings": [
+                {
+                    "containerPort": 3000,
+                    "hostPort": 0,
+                    "servicePort": 0,
+                    "protocol": "tcp"
+                }
+            ]
+            
+        }
+    },
+    "env": {
+        "CASSANDRA_HOST": "172.22.4.122",
+        "CASSANDRA_PORT": "31593"
+    },
+    "fetch": [
+        { "uri": "https://s3-us-west-1.amazonaws.com/streaming-artifacts/ui.tar.gz", "executable": false, "cache": false }
+    ]
+}

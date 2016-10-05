@@ -1,0 +1,122 @@
+#!/usr/bin/env python3
+
+import sys
+import yaml
+import datetime
+import requests
+import json
+
+
+class MarathonApp:
+    marathon_model = {}
+
+    def __init__(self, model):
+        self.marathon_model = model
+
+    @property
+    def id(self):
+        return self.marathon_model.get('id')
+
+    @id.setter
+    def id(self, value):
+        self.marathon_model['id'] = value
+
+    
+
+    def __str__(self):
+        return "MarathonApp({})".format(self.id)
+
+    def __repr__(self):
+        return str(self)
+
+
+
+
+def get_json(url):
+    r = requests.get(url)
+    return r.json()
+
+def post_json(url, data=None):
+    r = requests.post(url, data)
+    return r.json()
+
+def make_request(method, url, data=None):
+    if data:
+        r = requests.request(method, url, data=data)
+    else:
+        r = requests.request(method, url)
+    if r.json():
+        return r.json()
+    else:
+        raise RuntimeError
+
+
+def list_apps(url, filters={}):
+    res = get_json(url + "/v2/apps")
+    result = res.get('apps', [])
+    if filters:
+        for k in list(filters.keys()):
+            result = filter(lambda x: x.get('labels', {}).get(k, None) == filters[k], result)
+    
+    return map(lambda x: MarathonApp(x), result)
+
+def info(url, app_id):
+    res = None
+    try:
+        res = make_request('GET', url + "/v2/apps" + app_id)
+        return MarathonApp(res['app'])
+    except Exception:
+        return None
+
+def destroy(url, app_id):
+    res = make_request('DELETE', url + "/v2/apps" + app_id)
+
+def restart(url, app_id):
+    post_json(url + "/v2/apps" + app_id + '/restart')
+
+def scale(url, app_id, instances):
+    cmd = {'instances': instances}
+    make_request('PUT', url + "/v2/apps" + app_id, json.dumps(cmd))
+
+def create(url, configuration):
+    portMappings = []
+    for p in configuration['configuration.portMappings']:
+        portMappings.append(
+            {
+                "containerPort": int(list(p.keys())[0]),
+                "hostPort": 0,
+                "servicePort": int(p[list(p.keys())[0]]),
+                "protocol": "tcp"
+            
+            })
+        
+    app_definition = {
+        "id": configuration['configuration.name'],
+        "cpus": float(configuration['configuration.cpu']),
+        "mem": configuration['configuration.ram'],
+        "disk": configuration['configuration.disk'],
+        
+        "instances": configuration['configuration.instances'],
+        "container": {
+            "type": "DOCKER",
+            "docker": {
+                "image": configuration['configuration.imageId'],
+                "network": "BRIDGE",
+                "portMappings": portMappings
+                
+            }
+        }
+    }
+    if configuration.get('configuration.labels', None):
+        app_definition['labels'] = configuration['configuration.labels']
+    if configuration.get('configuration.env', None):
+        app_definition['env'] = configuration['configuration.env']
+    if configuration.get('configuration.constraints', None):
+        app_definition['constraints'] = configuration['configuration.constraints']
+
+
+    res = make_request('POST', url + "/v2/apps", json.dumps(app_definition))
+    if res.get('message', None):
+
+        print("Error: " + str(res), file=sys.stderr)
+        raise RuntimeError

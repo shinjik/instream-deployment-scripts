@@ -1,0 +1,42 @@
+application:
+    interfaces:
+        configuration:
+            "*": bind(application#configuration.*)
+        compute:
+            "*": bind(application#compute.*)
+        instances:
+            "*": bind(application#instances.*)
+        control:
+            "*": bind(application#control.*)
+    components: 
+        application:
+            type: scripted.Component 
+            configuration:
+                factory.name: Marathon Application Factory
+                factory.launchScript: /marathon/create.py
+                factory.destroyScript: /marathon/destroy.py
+                factory.healthCheckScript: /marathon/healthCheck.py
+                factory.reconfigurationScript: /marathon/reconfigure.py
+                factory.commandScripts:
+                    control.restart: /marathon/restart.py
+                    control.scale: /marathon/scale.py
+            interfaces:
+                configuration:
+                    cpu: configuration(string)
+                    ram: configuration(int)
+                    disk: configuration(int)
+                    instances: configuration(int)
+                    imageId: configuration(string)
+                    portMappings: configuration(list<map<string, string>>)
+                    cmd: configuration(string)
+                    name: configuration(string)
+                compute:
+                    ram: publish-signal(string)
+                    cpu: publish-signal(string)
+                    instances: publish-signal(string)
+                    portMappings: publish-signal(map<string, string>)
+                instances: 
+                    tasks: publish-signal(list<map<string, object>>) #map<string, string>
+                control:
+                    restart: receive-command()
+                    scale: receive-command(int instances)

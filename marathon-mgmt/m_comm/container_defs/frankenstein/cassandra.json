@@ -1,0 +1,33 @@
+{
+    "id": "/frankenstein/cassandra",
+    "cpus": 1,
+    "mem": 1024,
+    "disk": 2048,
+    
+    "instances": 1,
+    "cmd": "start && echo \"CREATE KEYSPACE test WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1 }; CREATE TABLE test.event_counts (country text, day text, events_count counter, PRIMARY KEY (country, day));\" | cqlsh",
+    "container": {
+        "type": "DOCKER",
+        "docker": {
+            "image": "poklet/cassandra",
+            "network": "BRIDGE",
+            "portMappings": [
+                {
+                    "containerPort": 9042,
+                    "hostPort": 0,
+                    "servicePort": 19042,
+                    "protocol": "tcp"
+                },
+                {
+                    "containerPort": 9160,
+                    "hostPort": 0,
+                    "servicePort": 19160,
+                    "protocol": "tcp"
+                }
+            ]
+            
+        }
+    },
+    "constraints": [["hostname", "UNIQUE"]]
+}
+ 

@@ -1,0 +1,29 @@
+{
+    "id": "/frankenstein/tw-consumer/ss",
+    "cpus": 0.1,
+    "mem": 256,
+    
+    "cmd": "java -cp ${MESOS_SANDBOX}/twitter-consumer-1.0-SNAPSHOT-jar-with-dependencies.jar movieTweets \"Suicide Squad\" tweetStream 2016-08-22",
+    "instances": 1,
+    "container": {
+        "type": "DOCKER",
+        "docker": {
+            "image": "java:8",
+            "network": "BRIDGE",
+            "portMappings": [
+                
+            ]
+            
+        }
+    },
+    "env": {
+        "KAFKA_BROKERS": "172.22.4.107:11000",
+        "TWITTER_ACCESS_TOKEN": "763497901926395904-WCAn2vtNQYVrdUG0ahu4N3ALWQ2GOdP",
+        "TWITTER_ACCESS_TOKEN_SECRET": "HBUWtKV6g0Yd7xXWCKR7KnljtGAifOFL104Xc4UIBG58F",
+        "TWITTER_CONSUMER_SECRET": "S2GppKq1UOgFSIDV3i1kaxvT4RsGlWQ3SAdNjip81PwDiC50fa",
+        "TWITTER_CONSUMER_KEY": "UigIJrnmXD34lJgIKbifM9dWY"
+    },
+    "fetch": [
+        { "uri": "https://s3-us-west-1.amazonaws.com/streaming-artifacts/twitter-consumer-1.0-SNAPSHOT-jar-with-dependencies.jar", "executable": false, "cache": false }
+    ]
+}

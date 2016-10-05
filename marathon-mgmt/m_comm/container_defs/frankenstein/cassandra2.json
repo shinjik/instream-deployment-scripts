@@ -1,0 +1,49 @@
+{
+    "id": "/frankenstein/cassandra2",
+    "cpus": 1,
+    "mem": 1200,
+    "disk": 0,
+    
+    "instances": 1,
+    "cmd": "chown -R cassandra /var/lib/cassandra && start",
+    "container": {
+        "type": "DOCKER",
+        "volumes": [
+          {
+            "containerPath": "cassandra2data",
+            "mode": "RW",
+            "persistent": {
+              "type": "root",
+              "size": 2048
+            }
+          },
+          {
+            "containerPath": "/var/lib/cassandra",
+            "hostPath": "cassandra2data",
+            "mode": "RW"
+          }
+        ],
+        "residency": {
+            "taskLostBehavior": "WAIT_FOREVER"
+        },
+        "docker": {
+            "image": "poklet/cassandra",
+            "network": "BRIDGE",
+            "portMappings": [
+                {
+                    "containerPort": 9042,
+                    "hostPort": 0,
+                    "servicePort": 0,
+                    "protocol": "tcp"
+                },
+                {
+                    "containerPort": 9160,
+                    "hostPort": 0,
+                    "servicePort": 0,
+                    "protocol": "tcp"
+                }
+            ]
+            
+        }
+    }
+}

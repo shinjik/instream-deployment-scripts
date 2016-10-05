@@ -1,0 +1,24 @@
+{
+    "id": "/frankenstein/redis3",
+    "cpus": 0.25,
+    "mem": 256,
+    "disk": 1024,
+    
+    "instances": 1,
+    "container": {
+        "type": "DOCKER",
+        "docker": {
+            "image": "redis",
+            "network": "BRIDGE",
+            "portMappings": [
+                {
+                    "containerPort": 6379,
+                    "hostPort": 0,
+                    "servicePort": 0,
+                    "protocol": "tcp"
+                }
+            ]
+            
+        }
+    }
+}

@@ -1,53 +1,32 @@
-
 application:
   configuration:
-    input.ami: "us-west-2/ami-d732f0b7"
-
+    input.ami: "us-west-1/ami-48db9d28"
+    input.region: "us-west-1"
     input.identity: "ubuntu"
-    input.aws_ssh_key: "-----BEGIN RSA PRIVATE KEY-----\nMIIEogIBAAKCAQEAjPr81vkVwojsy6tZi0kO6aygrn6sFGhab9llI/F6dJ95Us2/uygyRfHUnydp\n9VZxy9zfAysCVgr/HNG6kAiwhw1ukPV4xMsT7oHilrPEDWyUh6DxpZQGlF9psRlQnt4/t/9HceMq\nLGe4NyDapoDxPb1kSzROncXB6PZu8vJTHYjrGnN4d1HbffOV65JES8CQ43bzurA6MEbregX9DgaF\nej/hNJ11odd81ZbzoHtZVNZuJTkTTj76XuyWVFOpa6Yastr3R2LyNtjM+NEkDEOhOhQ/6CqSc/oP\n3nyYOwPxbQVdkSM5I+Y0rUBnFHAkJp46PbraAhk8NZfvi6OwHbn0GwIDAQABAoIBAGwfpsDdAnJT\nf4Do5uErZBOVgRqzLhjsu8eirK43app9IJiAEjdhKcV5Jn/1w48VAGvA9w0/9Ce3gVdCBtqmv3Sk\nuZLVoQ0VTzESTo0UTB2blAK9TfeWosEyuCXKa4mcnLPqRoozFko+NguZ1/fxVpPqaDxBXrYkUIby\nUb9kWJiCIB2knWY9Wmqt09zftBAHlMj5VNgRiLp12HVf4Grb9A5WRNtY0NRnR50iUrVqYW2W9gXM\nYIsyvTYS0A5HeAFEJ7mnms6CvzWSTSmPLocSqUN/zzl0VLl6K3ARl455UoGHMj0J+NyuxYSe9+ly\n90IjXMOiUZOlIOlRZUt2mphkTBkCgYEA0kUkb9L09NJI1vMREZIhUG8DQcYQ4wQj0LyTwVa+mioV\nBqLIpb8dAW2wEBmRrIqG0ee/OTK6mPb945Ct/1yy711R49h2KL0VHe4LlHAMxr/NRe+YzlevLTC/\nTOYLy4BcbL0RV7s/altjR6h2QqjfYk+5Zyom7Gd9XZF344XUS7cCgYEAq6QesFTlEdxfQbrvYT9x\nYNB3G8e9N+PTbomYe/0OV0Rw8MH0H8wIVOjGlVZec+9XezY/JqfO4cLLj0EA7ZXkxqHUfmpjoNhx\nzoI1+Qc2IjG+ljgYG9ZBnxCqKTZQXNXJr6jaVu0aMPTFzvO4j9i1AP8MD9EC1hxas2eZZlEOYr0C\ngYBqgbNPISAK0mkq17wRll9hipmvu0/abcJmfN6q0/F/zUkRL2tK6V8b1h+USB9Nsm1P7X8izdtO\nl+1KU4KPErlgHXjZXE+dmwkTO/yJl6ghFA46Gn7gJfIJheOgY/YdgktOmQYr1iDtEpVbOq2MXlWo\nSpGy+9rzbAhIWOLNUICUSQKBgHe9jwtErmm/a1TXrJgTQm1gATgIKCENdzruEsqsx4xp2sCbDkwA\ncu+JVMBp+Iq4tjbmqTe2acVlt8zAdH1KzMclrrBiWA6l8P84J58LQOCqA2OYznjdB/qIDa2ijn21\nR3acPXXXAyaUHEs8C82OSPfg9fEyxt/H+B6gb4vJkFehAoGAdrv9pKfV4aunDRRMcP5e/TWBky9U\nPPZWH4UfTypb3Rk75WJRAhAr7v6LJvCyFOGnv15c1CZpMofRiEaKT0mnI0WhWQV02KXOYh4BryHj\njJD/uonnmDHq9z2VM98sXpTuzxG24kiyJnBqzVA7a7qfvmSOesA4veykWjBC37b5Gec=\n-----END RSA PRIVATE KEY-----"
     input.master_hardware: "t2.small"
     input.manager_hardware: "t2.micro"
     input.slave_hardware: "t2.medium"
     input.masters_quantity: "1"
     input.slaves_quantity: "2"
-
     input.playbooks_url: "https://s3-us-west-1.amazonaws.com/streaming-artifacts/playbooks.tar.gz"
-    #"https://s3.amazonaws.com/mesos-deployment-scripts/mesos-marathon-playbooks-stable.tar.gz"
-
     input.mesos_version: "0.28.2"
     input.mesos_package_version: "2.0.27"
     input.marathon_version: "1.1.2"
-    
-    
-    #input.scripts_url: "https://s3-us-west-1.amazonaws.com/streaming-artifacts/playbooks.tar.gz"
-    # configuration.imageId:    "ami-d732f0b7"
-    # configuration.hardwareId: "t2.micro"
-    # configuration.locationId: "us-west-2"
-    # configuration.login:      "ubuntu"
-    # configuration.group:      "default"
 
   interfaces:
     input:
       ami: "bind(vms#input.ami, manager-node#configuration.imageId)"
+      region: "bind(vms#input.region, manager-node#configuration.locationId)"
       identity: "bind(vms#input.identity, manager-node#configuration.login)"
-      aws_ssh_key: "bind(vms#input.aws_ssh_key)"
       manager_hardware: "bind(vms#input.manager_hardware, manager-node#configuration.hardwareId)"
       master_hardware: "bind(vms#input.master_hardware)"
       slave_hardware: "bind(vms#input.slave_hardware)"
       masters_quantity: "bind(vms#input.masters_quantity)"
-
       slaves_quantity: "bind(vms#input.slaves_quantity)"
-
       playbooks_url: "bind(vms#input.playbooks_url)"
       mesos_version: "bind(vms#input.mesos_version)"
       mesos_package_version: "bind(vms#input.mesos_package_version)"
       marathon_version: "bind(vms#input.marathon_version)"
-      #scripts_url: "bind(marathon#marathon-manager.scripts_url)"
-
-    
-  
-
-    
 
     Mesos:
       application-pic: "bind(metadata#output.mesos-pic)"
@@ -65,12 +44,8 @@ application:
       restart-application: "bind(marathon#actions.restart-application)"
 
   bindings:
-    - [manager-node, marathon#manager]
+    - [manager-node, vms]
     - [vms, marathon#marathon-manager]
-
-    #- [mesos, marathon]
-
-    #- [monitoring, vms]
 
   components:
     metadata:
@@ -93,31 +68,28 @@ application:
             large: "https://camo.githubusercontent.com/074c27eb3865127b2d8bc616ae16450c0f661780/68747470733a2f2f6d65736f7370686572652e636f6d2f77702d636f6e74656e742f7468656d65732f6d65736f7370686572652f6c6962726172792f696d616765732f636f6d706f6e656e74732f73657276696365732f6d61726174686f6e2e6a7067"
             small: "http://mesosphere.github.io/presentations/mesos-nutshell-2015/assets/marathon-favicon-64x64.png"
             small-height: 64
+
     manager-node:
       type: compute.Instance
 
     vms:
       type: workflow.Instance
       interfaces:
-      
         manager-node:
-          networks:        consume-signal(map<string, map<string, string>>)
-          exec:            send-command(string command, int timeout => string stdOut, string stdErr => string stdOut, string stdErr, int exitCode)
-
+          networks:   consume-signal(map<string, map<string, string>>)
+          exec:       send-command(string command, int timeout => string stdOut, string stdErr => string stdOut, string stdErr, int exitCode)
+          put-file:   send-command(string filename, bytes payload)
+          get-file:   send-command(string filename => bytes payload)
         input:
           ami:
             type: configuration(string)
             name: EC2 image
+          region:
+            type: configuration(string)
+            name: EC2 datacenter
           identity:
             type: configuration(string)
             name: EC2 image username
-          #  type: configuration(map<string,object>)
-          #  suggestions:
-          #    east: {image: "us-east-1/ami-ee698586", identity: "root"}
-          #    west: {image: "us-west-1/ami-0e073d4b", identity: "root"}
-          aws_ssh_key:
-            type: configuration(string)
-            name: AWS ssh key file
           manager_hardware:
             type: configuration(string)
             name: Mesos cluster manager node hardware type
@@ -167,7 +139,7 @@ application:
             type: publish-signal(string)
             name: Marathon management scripts URL
 
-      required: []
+      required: [manager-node]
       configuration:
         configuration.triggers: {}
         configuration.workflows:
@@ -178,16 +150,11 @@ application:
                   phase: get-env-props
                   output:
                     config: result
-              - provision-mesos-manager:
-                  action: .provision-node
-                  phase: provision-node
-                  precedingPhases: [ get-env-props ]
-                  parameters:
-                      roleName: "mesos-manager"
-                      hardwareId: "{$.manager_hardware}"
-                      quantity: "1"
+
+              - get-signals:
+                  action: getSignals
                   output:
-                      managerIp: ips
+                      signals: result
 
               - provision-mesos-master:
                   action: .provision-node
@@ -218,199 +185,124 @@ application:
                   precedingPhases: [ provision-node ]
                   parameters:
                       isSudo: true
-                      roles: [ "mesos-manager" ]
+                      roles: [ "manager-node" ]
                       command:
-                          - bash
-                          - "-c"
                           - |
-                                apt-get install software-properties-common &&
-                                apt-add-repository ppa:ansible/ansible &&
-                                apt-get update &&
-                                apt-get install -y ansible
+                            apt-get install software-properties-common &&
+                            apt-add-repository ppa:ansible/ansible &&
+                            apt-get update &&
+                            apt-get install -y ansible
 
-              - put-aws-ssh-key:
+              - generate-ansible-ssh-key:
                   action: execrun
                   precedingPhases: [ install-ansible ]
                   parameters:
-                      #isSudo: true
-                      roles: [ "mesos-manager" ]
+                      roles: [ "manager-node" ]
                       command:
-                          - bash
-                          - "-c"
                           - |
-                                echo "{$.aws_ssh_key}" > ~/.ssh/aws.pem &&
-                                chmod 600 ~/.ssh/aws.pem
+                            ssh-keygen -t rsa -N "" -f ~/.ssh/aws.key &&
+                            chmod 600 ~/.ssh/aws.key
+
+              - get-ansible-ssh-pub-key:
+                  action: execrun
+                  precedingPhases: [ generate-ansible-ssh-key ]
+                  parameters:
+                      roles: [ "manager-node" ]
+                      command:
+                          - |
+                            cat ~/.ssh/aws.key.pub
+                  output:
+                      ansible-pub-key: stdout
+
+              - distribute-ssh-pub-key:
+                  action: execrun
+                  precedingPhases: [ get-ansible-ssh-pub-key ]
+                  parameters:
+                      roles: [ "mesos-master", "mesos-slave" ]
+                      command:
+                          - |
+                            echo "{$.ansible-pub-key[*][0]}" >> ~/.ssh/authorized_keys
 
               - serialize-masters-list:
                   action: serialize
-                  precedingPhases: [ put-aws-ssh-key ]
+                  precedingPhases: [ distribute-ssh-pub-key ]
                   parameters:
                       format: CSV
-                      input: '{$.masterIps}'
+                      input: "{$.masterIps}"
                   output:
                       serialized-masters-list: serialized
+
               - serialize-masters-list-as-yaml:
                   action: serialize
-                  precedingPhases: [ put-aws-ssh-key ]
+                  precedingPhases: [ distribute-ssh-pub-key ]
                   parameters:
                       format: yaml
-                      input:
-                          '{$.masterIps}'
-
+                      input: "{$.masterIps}"
                   output:
                       yaml-serialized-masters-list: serialized
+
               - serialize-slaves-list:
                   action: serialize
-                  precedingPhases: [ put-aws-ssh-key ]
+                  precedingPhases: [ distribute-ssh-pub-key ]
                   parameters:
                       format: CSV
-                      input: '{$.slaveIps}'
+                      input: "{$.slaveIps}"
                   output:
                       serialized-slaves-list: serialized
+
               - create-hosts-list:
                   action: execrun
                   precedingPhases: [ serialize-masters-list, serialize-slaves-list ]
                   parameters:
-                      #isSudo: true
-                      roles: [ "mesos-manager" ]
+                      roles: [ "manager-node" ]
                       command:
-                          - bash
-                          - "-c"
                           - |
-                                echo "[mesos_masters]"  > hosts &&
-                                echo "{$.serialized-masters-list}"  >> hosts &&
-                                echo "[mesos_workers]" >> hosts &&
-                                echo "{$.serialized-slaves-list}" >> hosts &&
-                                echo "[mesos_masters:vars]" >> hosts &&
-                                echo "ansible_user=ubuntu" >> hosts &&
-                                echo "ansible_ssh_private_key_file=~/.ssh/aws.pem" >> hosts &&
-                                echo "[mesos_workers:vars]" >> hosts  &&
-                                echo "ansible_user=ubuntu" >> hosts &&
-                                echo "ansible_ssh_private_key_file=~/.ssh/aws.pem" >> hosts
+                            echo "[mesos_masters]" > hosts &&
+                            echo "{$.serialized-masters-list}" >> hosts &&
+                            echo "[mesos_workers]" >> hosts &&
+                            echo "{$.serialized-slaves-list}" >> hosts &&
+                            echo "[mesos_masters:vars]" >> hosts &&
+                            echo "ansible_user=ubuntu" >> hosts &&
+                            echo "ansible_ssh_private_key_file=~/.ssh/aws.key" >> hosts &&
+                            echo "[mesos_workers:vars]" >> hosts  &&
+                            echo "ansible_user=ubuntu" >> hosts &&
+                            echo "ansible_ssh_private_key_file=~/.ssh/aws.key" >> hosts
 
               - create-vars-file:
                   action: execrun
                   precedingPhases: [ serialize-masters-list, serialize-slaves-list, serialize-masters-list-as-yaml ]
                   parameters:
-                      #isSudo: true
-                      roles: [ "mesos-manager" ]
+                      roles: [ "manager-node" ]
                       command:
-                          - bash
-                          - "-c"
                           - |
-                                echo "mesos_version: \"{$.mesos_version}\"" > params.yaml &&
-                                echo "mesos_package_version: \"{$.mesos_package_version}\"" >> params.yaml &&
-                                echo "marathon_version: \"{$.marathon_version}\"" >> params.yaml &&
-                                echo "mesos_master_hosts:" >> params.yaml &&
-                                echo "{$.yaml-serialized-masters-list}"  >> params.yaml 
-                                
+                            echo "mesos_version: \"{$.mesos_version}\"" > params.yaml &&
+                            echo "mesos_package_version: \"{$.mesos_package_version}\"" >> params.yaml &&
+                            echo "marathon_version: \"{$.marathon_version}\"" >> params.yaml &&
+                            echo "mesos_master_hosts:" >> params.yaml &&
+                            echo "{$.yaml-serialized-masters-list}" >> params.yaml
 
               - download-ansible-scripts:
                   action: execrun
                   precedingPhases: [ create-hosts-list ]
                   parameters:
-                      #isSudo: true
-                      roles: [ "mesos-manager" ]
+                      roles: [ "manager-node" ]
                       command:
-                          - bash
-                          - "-c"
                           - |
-                                wget "{$.playbooks_url}" -O playbooks.tar.gz &&
-                                tar -zxf playbooks.tar.gz
+                            wget "{$.playbooks_url}" -O playbooks.tar.gz &&
+                            tar -zxf playbooks.tar.gz
 
               - run-ansible:
                   action: execrun
                   precedingPhases: [ download-ansible-scripts, create-vars-file ]
                   parameters:
-                      #isSudo: true
-                      roles: [ "mesos-manager" ]
+                      roles: [ "manager-node" ]
                       command:
-                          - bash
-                          - "-c"
                           - |
-                                cd mesos-ansible &&
-                                ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i ../hosts playbook.yml --extra-vars "@../params.yaml"
-              # - install-pkgs-on-manager:
-              #     action: chefrun
-              #     precedingPhases: [ install-pkgs-on-all-nodes ]
-              #     parameters:
-              #         isSudo: true
-              #         isSolo: true
-              #         roles: [ "manager"]
-              #         recipeUrl: "{$.cookbooks_url}"
-              #         runList: [ "recipe[cloudera::install_pkgs_manager]", ]
-              #         jattrs:
-              #           java:
-              #             java_home: "/usr/java/jdk6"
-              #           cloudera:
-              #             master:
-              #               host: "{$.masterDns[*][0]}"
-              #             manager:
-              #               host: "{$.managerDns[*][0]}"
-              #               version: "{$.cloudera_manager_version}"
-              #             jobtracker:
-              #               host: "{$.managerDns[*][0]}"
-              #               ip: "{$.managerIp[0]}"
-              #             datanodes:
-              #               hosts: "{$.datanodeDns[*]}"
-              #             hadoop:
-              #               version: "{$.cloudera_hadoop_version}"
-              #             repository_url: "{$.repository_url}"
-              #           mysql:
-              #             server_debian_password: "{$.metastore_root_password}"
-              #             server_root_password: "{$.metastore_root_password}"
-              #             server_repl_password: "{$.metastore_root_password}"
-              #             bind_address: "127.0.0.1"
-              # - install-pkgs-on-master-datanodes:
-              #     action: chefrun 
-              #     precedingPhases: [ install-pkgs-on-all-nodes ]
-              #     parameters:
-              #         isSudo: true
-              #         isSolo: true
-              #         roles: [ "datanode", "master" ]
-              #         recipeUrl: "{$.cookbooks_url}"
-              #         runList: [ "recipe[cloudera::install_pkgs_master_datanodes]", ]
-              #         jattrs:
-              #           java:
-              #             java_home: "/usr/java/jdk6"
-              #           cloudera:
-              #             master:
-              #               host: "{$.masterDns[*][0]}"
-              #             manager:
-              #               host: "{$.managerDns[*][0]}"
-              #               version: "{$.cloudera_manager_version}"
-              #             datanodes:
-              #               hosts: "{$.datanodeDns[*]}"
-              #             hadoop:
-              #               version: "{$.cloudera_hadoop_version}"
-              #             repository_url: "{$.repository_url}"
-              # - install-pkgs-on-master:
-              #     action: chefrun
-              #     precedingPhases: [ install-pkgs-on-master-datanodes ]
-              #     parameters:
-              #         isSudo: true
-              #         isSolo: true
-              #         roles: [ "master" ]
-              #         recipeUrl: "{$.cookbooks_url}"
-              #         runList: [ "recipe[cloudera::install_pkgs_master]", ]
-              #         jattrs:
-              #           java:
-              #             java_home: "/usr/java/jdk6"
-              #           cloudera:
-              #             master:
-              #               host: "{$.masterDns[*][0]}"
-              #             manager:
-              #               host: "{$.managerDns[*][0]}"
-              #               version: "{$.cloudera_manager_version}"
-              #             datanodes:
-              #               hosts: "{$.datanodeDns[*]}"
-              #             hadoop:
-              #               version: "{$.cloudera_hadoop_version}"
-              #             repository_url: "{$.repository_url}"
-
+                            cd mesos-ansible &&
+                            ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i ../hosts playbook.yml --extra-vars "@../params.yaml"
             return:
               - Mesos_Manager:
-                  value: "{$.managerIp[0]}"
+                  value: "{$.signals.manager-node.networks.public.ip}"
               - Mesos_Masters:
                   value: "{$.masterIps}"
               - Mesos_URL:
@@ -440,24 +332,9 @@ application:
                       vmIdentity: "{$.identity}"
                       hardwareId: "{$.hardwareId}"
                       quantity: "{$.quantity}"
-                      #securityGroup: "default"
-                      #jcloudsNodeNamePrefix: "{$.cluster_prefix}"
                     output:
                       PublicIPs: ips
-                # - install-ansible:
-                #     action: execrun
-                #     precedingPhases: [ provision ]
-                #     parameters:
-                #       isSudo: true
-                #       roles: [ "{$.roleName}" ]
-                #       command:
-                #           - bash
-                #           - "-c"
-                #           - |
-                #                 apt-get install software-properties-common &&
-                #                 apt-add-repository ppa:ansible/ansible &&
-                #                 apt-get update &&
-                #                 apt-get install -y ansible
+
                 - set-hostname:
                     action: execrun
                     phase: post-provision
@@ -466,16 +343,12 @@ application:
                       isSudo: true
                       roles: [ "{$.roleName}" ]
                       command:
-                          - bash
-                          - "-c"
                           - |
-                                hostname `curl -s http://169.254.169.254/latest/meta-data/public-hostname` &&
-                                echo "`hostname -i`   `hostname`" >> /etc/hosts &&
-                                hostname
+                            hostname `curl -s http://169.254.169.254/latest/meta-data/public-hostname` &&
+                            echo "`hostname -i`   `hostname`" >> /etc/hosts &&
+                            hostname
                     output:
                       dns: stdout
-
-
               return:
                 ips:
                   value: "{$.PublicIPs}"
@@ -486,30 +359,13 @@ application:
       type: reference.Submodule
       configuration:
         __locator.application-id: "Mesos/Marathon Manager"
-      required: [manager, marathon-manager]
-      interfaces:
-        manager:
-          #type: compute.Instance
-          networks:        consume-signal(map<string, map<string, string>>)
-          exec:            send-command(string command, int timeout => string stdOut, string stdErr => string stdOut, string stdErr, int exitCode)
-          put-file:   send-command(string filename, bytes payload)
-          get-file:   send-command(string filename => bytes payload)
+      required: [marathon-manager]
 
-        # input:
-        #   identity:
-        #     type: configuration(string)
-        #     name: EC2 image username
-        #   scripts_url:
-        #     type: configuration(string)
-        #     name: Mesos/Marathon management scripts
-        #   manager_vm: 
-        #     type: configuration(string)
-        #     name: Mesos/Marathon management VM IP
+      interfaces:
         marathon-manager:
           Mesos_Manager: consume-signal(string)
           Marathon_URL: consume-signal(string)
           scripts_url: consume-signal(string)
-        
         actions:
           list-applications:
             type: receive-command()

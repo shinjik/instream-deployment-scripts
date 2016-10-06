@@ -12,7 +12,7 @@ application:
     input.cpu_tag_hardware: "t2.micro"
     input.memory_tag_hardware: "t2.micro"
     input.disk_tag_hardware: "t2.micro"
-    input.playbooks_url: "https://s3-us-west-1.amazonaws.com/streaming-artifacts/playbooks.tar.gz"
+    input.playbooks_url: "https://s3-us-west-1.amazonaws.com/maxim-gg/playbook.tar.gz"
     input.mesos_version: "0.28.2"
     input.mesos_package_version: "2.0.27"
     input.marathon_version: "1.1.2"
@@ -42,6 +42,11 @@ application:
       slaves_with_cpu_tag: "bind(vms#result.mesos_slaves_with_cpu_tag)"
       slaves_with_memory_tag: "bind(vms#result.mesos_slaves_with_memory_tag)"
       slaves_with_disk_tag: "bind(vms#result.mesos_slaves_with_disk_tag)"
+      scale-cluster: "bind(vms#actions.scale-cluster)"
+      update-playbooks: "bind(vms#actions.update-playbooks)"
+      slaves_cpu_quantity: "bind(vms#result.slaves_cpu_quantity)"
+      slaves_memory_quantity: "bind(vms#result.slaves_memory_quantity)"
+      slaves_disk_quantity: "bind(vms#result.slaves_disk_quantity)"
 
     Marathon:
       application-pic: "bind(metadata#output.marathon-pic)"
@@ -139,6 +144,13 @@ application:
           mesos_package_version:
             type: configuration(string)
             name: Mesos .deb package version
+        actions:
+          scale-cluster:
+            type: receive-command(int slaves-cpu-hardware-quantity, int slaves-memory-hardware-quantity, int slaves-disk-hardware-quantity)
+            name: Scale cluster
+          update-playbooks:
+            type: receive-command(string playbooks-url)
+            name: Update playbooks on manager node
         result:
           Mesos_Manager:
             type: publish-signal(string)
@@ -154,16 +166,25 @@ application:
             name: Marathon UI URL
           mesos_slaves_with_cpu_tag:
             type: publish-signal(list<string>)
-            name: Mesos slaves
+            name: Mesos cpu intensive slaves
           mesos_slaves_with_memory_tag:
             type: publish-signal(list<string>)
-            name: Mesos slaves
+            name: Mesos memory intensive slaves
           mesos_slaves_with_disk_tag:
             type: publish-signal(list<string>)
-            name: Mesos slaves
+            name: Mesos disk intensive slaves
           scripts_url:
             type: publish-signal(string)
             name: Marathon management scripts URL
+          slaves_cpu_quantity:
+            type: publish-signal(int)
+            name: Mesos cpu intensive slaves quantity
+          slaves_memory_quantity:
+            type: publish-signal(int)
+            name: Mesos memory intensive slaves quantity
+          slaves_disk_quantity:
+            type: publish-signal(int)
+            name: Mesos disk intensive slaves quantity
 
       required: [manager-node]
       configuration:
@@ -171,7 +192,7 @@ application:
         configuration.workflows:
           launch:
             steps:
-              - get_env_props:
+              - get-env-props:
                   action: getEnvironmentProperties
                   phase: get-env-props
                   output:
@@ -182,9 +203,17 @@ application:
                   output:
                       signals: result
 
-              - provision-mesos-master:
-                  action: .provision-node
-                  phase: provision-node
+              - install-ansible:
+                  action: .install-ansible
+                  precedingPhases: [ get-env-props ]
+
+              - generate-ansible-ssh-key:
+                  action: .generate-ssh-key
+                  precedingPhases: [ get-env-props ]
+
+              - provision-mesos-masters:
+                  action: .provision-nodes
+                  phase: provision-nodes
                   precedingPhases: [ get-env-props ]
                   parameters:
                       roleName: "mesos-master"
@@ -194,197 +223,92 @@ application:
                       masterIps: ips
                       masterDns: dns
 
-              - provision-slaves-with-cpu-tag:
-                  action: .provision-node
-                  phase: provision-node
+              - provision-mesos-slaves:
+                  action: .provision-slave-nodes
+                  phase: provision-nodes
                   precedingPhases: [ get-env-props ]
                   parameters:
-                      roleName: "mesos-slave"
-                      hardwareId: "{$.cpu_tag_hardware}"
-                      quantity: "{$.slaves_cpu_hardware_quantity}"
+                      slaves-cpu-hardware-quantity: "{$.slaves_cpu_hardware_quantity}"
+                      slaves-memory-hardware-quantity: "{$.slaves_memory_hardware_quantity}"
+                      slaves-disk-hardware-quantity: "{$.slaves_disk_hardware_quantity}"
                   output:
-                      slaveCpuIps: ips
-                      slaveCpuDns: dns
-
-              - provision-slaves-with-memory-tag:
-                  action: .provision-node
-                  phase: provision-node
-                  precedingPhases: [ get-env-props ]
-                  parameters:
-                      roleName: "mesos-slave"
-                      hardwareId: "{$.memory_tag_hardware}"
-                      quantity: "{$.slaves_memory_hardware_quantity}"
-                  output:
-                      slaveMemoryIps: ips
-                      slaveMemoryDns: dns
-
-              - provision-slaves-with-disk-tag:
-                  action: .provision-node
-                  phase: provision-node
-                  precedingPhases: [ get-env-props ]
-                  parameters:
-                      roleName: "mesos-slave"
-                      hardwareId: "{$.disk_tag_hardware}"
-                      quantity: "{$.slaves_disk_hardware_quantity}"
-                  output:
-                      slaveDiskIps: ips
-                      slaveDiskDns: dns
-
-              - install-ansible:
-                  action: execrun
-                  precedingPhases: [ provision-node ]
-                  parameters:
-                      isSudo: true
-                      roles: [ "manager-node" ]
-                      command:
-                          - |
-                            apt-get install software-properties-common &&
-                            apt-add-repository ppa:ansible/ansible &&
-                            apt-get update &&
-                            apt-get install -y ansible
-
-              - generate-ansible-ssh-key:
-                  action: execrun
-                  precedingPhases: [ install-ansible ]
-                  parameters:
-                      roles: [ "manager-node" ]
-                      command:
-                          - |
-                            ssh-keygen -t rsa -N "" -f ~/.ssh/aws.key &&
-                            chmod 600 ~/.ssh/aws.key
-
-              - get-ansible-ssh-pub-key:
-                  action: execrun
-                  precedingPhases: [ generate-ansible-ssh-key ]
-                  parameters:
-                      roles: [ "manager-node" ]
-                      command:
-                          - |
-                            cat ~/.ssh/aws.key.pub
-                  output:
-                      ansible-pub-key: stdout
+                      slaveCpuIps: slaveCpuIps
+                      slaveMemoryIps: slaveMemoryIps
+                      slaveDiskIps: slaveDiskIps
 
               - distribute-ssh-pub-key:
-                  action: execrun
-                  precedingPhases: [ get-ansible-ssh-pub-key ]
-                  parameters:
-                      roles: [ "mesos-master", "mesos-slave" ]
-                      command:
-                          - |
-                            echo "{$.ansible-pub-key[*][0]}" >> ~/.ssh/authorized_keys
+                  action: .distribute-ssh-pub-key
+                  precedingPhases: [ provision-nodes ]
 
               - serialize-masters-list:
-                  action: serialize
+                  action: .serialize-list
                   precedingPhases: [ distribute-ssh-pub-key ]
                   parameters:
-                      format: CSV
-                      input: "{$.masterIps}"
+                      arg: "{$.masterIps}"
                   output:
-                      serialized-masters-list: serialized
-
-              - serialize-masters-list-as-yaml:
-                  action: serialize
-                  precedingPhases: [ distribute-ssh-pub-key ]
-                  parameters:
-                      format: yaml
-                      input: "{$.masterIps}"
-                  output:
-                      yaml-serialized-masters-list: serialized
+                      serialized-masters-list: as-csv
+                      yaml-serialized-masters-list: as-yaml
 
               - serialize-slaves-with-cpu-list:
-                  action: serialize
+                  action: .serialize-list
                   phase: serialize-slaves-list
                   precedingPhases: [ distribute-ssh-pub-key ]
                   parameters:
-                      format: CSV
-                      input: "{$.slaveCpuIps}"
+                      arg: "{$.slaveCpuIps}"
                   output:
-                      serialized-slaves-with-cpu-list: serialized
+                      serialized-slaves-with-cpu-list: as-csv
 
               - serialize-slaves-with-memory-list:
-                  action: serialize
+                  action: .serialize-list
                   phase: serialize-slaves-list
                   precedingPhases: [ distribute-ssh-pub-key ]
                   parameters:
-                      format: CSV
-                      input: "{$.slaveMemoryIps}"
+                      arg: "{$.slaveMemoryIps}"
                   output:
-                      serialized-slaves-with-memory-list: serialized
+                      serialized-slaves-with-memory-list: as-csv
 
               - serialize-slaves-with-disk-list:
-                  action: serialize
+                  action: .serialize-list
                   phase: serialize-slaves-list
                   precedingPhases: [ distribute-ssh-pub-key ]
                   parameters:
-                      format: CSV
-                      input: "{$.slaveDiskIps}"
+                      arg: "{$.slaveDiskIps}"
                   output:
-                      serialized-slaves-with-disk-list: serialized
+                      serialized-slaves-with-disk-list: as-csv
 
-              - create-hosts-list:
-                  action: execrun
-                  precedingPhases: [ serialize-masters-list, serialize-slaves-list ]
+              - prepare-masters-inventory-file:
+                  action: .prepare-masters-inventory-file
+                  precedingPhases: [ serialize-masters-list ]
                   parameters:
-                      roles: [ "manager-node" ]
-                      command:
-                          - |
-                            echo "[mesos_masters]" > hosts &&
-                            echo "{$.serialized-masters-list}" >> hosts &&
-                            echo "[mesos_workers:children]" >> hosts &&
-                            echo "mesos_cpu_instances" >> hosts &&
-                            echo "mesos_memory_instances" >> hosts &&
-                            echo "mesos_disk_instances" >> hosts &&
-                            echo "[mesos_cpu_instances]" >> hosts &&
-                            echo "{$.serialized-slaves-with-cpu-list}" >> hosts &&
-                            echo "[mesos_memory_instances]" >> hosts &&
-                            echo "{$.serialized-slaves-with-memory-list}" >> hosts &&
-                            echo "[mesos_disk_instances]" >> hosts &&
-                            echo "{$.serialized-slaves-with-disk-list}" >> hosts &&
-                            echo "[mesos_masters:vars]" >> hosts &&
-                            echo "ansible_user=ubuntu" >> hosts &&
-                            echo "ansible_ssh_private_key_file=~/.ssh/aws.key" >> hosts &&
-                            echo "[mesos_workers:vars]" >> hosts  &&
-                            echo "ansible_user=ubuntu" >> hosts &&
-                            echo "ansible_ssh_private_key_file=~/.ssh/aws.key" >> hosts
-                            echo "[mesos_cpu_instances:vars]" >> hosts &&
-                            echo "mesos_node_type=cpu-intensive" >> hosts &&
-                            echo "[mesos_memory_instances:vars]" >> hosts &&
-                            echo "mesos_node_type=memory-intensive" >> hosts &&
-                            echo "[mesos_disk_instances:vars]" >> hosts &&
-                            echo "mesos_node_type=disk-intensive" >> hosts
+                      serialized-masters-list: "{$.serialized-masters-list}"
+
+              - prepare-slaves-inventory-file:
+                  action: .prepare-slaves-inventory-file
+                  precedingPhases: [ serialize-slaves-list ]
+                  parameters:
+                      serialized-slaves-with-cpu-list: "{$.serialized-slaves-with-cpu-list}"
+                      serialized-slaves-with-memory-list: "{$.serialized-slaves-with-memory-list}"
+                      serialized-slaves-with-disk-list: "{$.serialized-slaves-with-disk-list}"
 
               - create-vars-file:
-                  action: execrun
-                  precedingPhases: [ serialize-masters-list, serialize-slaves-list, serialize-masters-list-as-yaml ]
+                  action: .update-vars-file
+                  precedingPhases: [ serialize-masters-list, serialize-slaves-list ]
                   parameters:
-                      roles: [ "manager-node" ]
-                      command:
-                          - |
-                            echo "mesos_version: \"{$.mesos_version}\"" > params.yaml &&
-                            echo "mesos_package_version: \"{$.mesos_package_version}\"" >> params.yaml &&
-                            echo "marathon_version: \"{$.marathon_version}\"" >> params.yaml &&
-                            echo "mesos_master_hosts:" >> params.yaml &&
-                            echo "{$.yaml-serialized-masters-list}" >> params.yaml
+                      mesos-version: "{$.mesos_version}"
+                      mesos-package-version: "{$.mesos_package_version}"
+                      marathon-version: "{$.marathon_version}"
+                      yaml-serialized-masters-list: "{$.yaml-serialized-masters-list}"
 
               - download-ansible-scripts:
-                  action: execrun
-                  precedingPhases: [ create-hosts-list ]
+                  action: .update-ansible-playbooks
+                  precedingPhases: [ install-ansible ]
                   parameters:
-                      roles: [ "manager-node" ]
-                      command:
-                          - |
-                            wget "{$.playbooks_url}" -O playbooks.tar.gz &&
-                            tar -zxf playbooks.tar.gz
+                      playbooks-url: "{$.playbooks_url}"
 
               - run-ansible:
-                  action: execrun
+                  action: .run-ansible
                   precedingPhases: [ download-ansible-scripts, create-vars-file ]
-                  parameters:
-                      roles: [ "manager-node" ]
-                      command:
-                          - |
-                            cd mesos-ansible &&
-                            ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i ../hosts playbook.yml --extra-vars "@../params.yaml"
+
             return:
               - Mesos_Manager:
                   value: "{$.signals.manager-node.networks.public.ip}"
@@ -402,8 +326,332 @@ application:
                   value: "{$.slaveDiskIps}"
               - scripts_url:
                   value: "{$.playbooks_url}"
+              - slaves_cpu_quantity:
+                  value: "{$.slaves_cpu_hardware_quantity}"
+              - slaves_memory_quantity:
+                  value: "{$.slaves_memory_hardware_quantity}"
+              - slaves_disk_quantity:
+                  value: "{$.slaves_disk_hardware_quantity}"
 
-          .provision-node:
+          scale-cluster:
+              parameters:
+                - slaves-cpu-hardware-quantity:
+                    description: Quantity of slaves with cpu tag
+                    type: int
+                - slaves-memory-hardware-quantity:
+                    description: Quantity of slaves with memory tag
+                    type: int
+                - slaves-disk-hardware-quantity:
+                    description: Quantity of slaves with disk tag
+                    type: int
+                    default: 1
+              steps:
+                - provision-nodes:
+                    action: .provision-slave-nodes
+                    parameters:
+                        slaves-cpu-hardware-quantity: "{$.slaves-cpu-hardware-quantity}"
+                        slaves-memory-hardware-quantity: "{$.slaves-memory-hardware-quantity}"
+                        slaves-disk-hardware-quantity: "{$.slaves-disk-hardware-quantity}"
+                    output:
+                        slaveCpuIps: slaveCpuIps
+                        slaveMemoryIps: slaveMemoryIps
+                        slaveDiskIps: slaveDiskIps
+
+                - distribute-ssh-pub-key:
+                    action: .distribute-ssh-pub-key
+                    precedingPhases: [ provision-nodes ]
+
+                - serialize-slaves-with-cpu-list:
+                    action: .serialize-list
+                    phase: serialize-slaves-list
+                    precedingPhases: [ provision-nodes ]
+                    parameters:
+                        arg: "${slaveCpuIps}"
+                    output:
+                        serialized-slaves-with-cpu-list: as-csv
+
+                - serialize-slaves-with-memory-list:
+                    action: .serialize-list
+                    phase: serialize-slaves-list
+                    precedingPhases: [ provision-nodes ]
+                    parameters:
+                        arg: "${slaveMemoryIps}"
+                    output:
+                        serialized-slaves-with-memory-list: as-csv
+
+                - serialize-slaves-with-disk-list:
+                    action: .serialize-list
+                    phase: serialize-slaves-list
+                    precedingPhases: [ provision-nodes ]
+                    parameters:
+                        arg: "${slaveDiskIps}"
+                    output:
+                        serialized-slaves-with-disk-list: as-csv
+
+                - prepare-slaves-inventory-file:
+                    action: .prepare-slaves-inventory-file
+                    precedingPhases: [ serialize-slaves-list ]
+                    parameters:
+                        serialized-slaves-with-cpu-list: "{$.serialized-slaves-with-cpu-list}"
+                        serialized-slaves-with-memory-list: "{$.serialized-slaves-with-memory-list}"
+                        serialized-slaves-with-disk-list: "{$.serialized-slaves-with-disk-list}"
+
+                - run-ansible:
+                    action: .run-ansible
+                    precedingPhases: [ prepare-slaves-inventory-file ]
+
+              return:
+                - mesos_slaves_with_cpu_tag:
+                    value: "{$.slaveCpuIps}"
+                - mesos_slaves_with_memory_tag:
+                    value: "{$.slaveMemoryIps}"
+                - mesos_slaves_with_disk_tag:
+                    value: "{$.slaveDiskIps}"
+                - slaves_cpu_quantity:
+                    value: "{$.slaves-cpu-hardware-quantity}"
+                - slaves_memory_quantity:
+                    value: "{$.slaves-memory-hardware-quantity}"
+                - slaves_disk_quantity:
+                    value: "{$.slaves-disk-hardware-quantity}"
+
+          update-playbooks:
+              parameters:
+                - playbooks-url:
+                    description: Playbooks url
+              steps:
+                - update:
+                    action: .update-ansible-playbooks
+                    parameters:
+                        playbooks-url: "{$.playbooks-url}"
+
+          .provision-slave-nodes:
+              parameters:
+                - slaves-cpu-hardware-quantity:
+                    description: Quantity of slaves with cpu tag
+                    type: int
+                - slaves-memory-hardware-quantity:
+                    description: Quantity of slaves with memory tag
+                    type: int
+                - slaves-disk-hardware-quantity:
+                    description: Quantity of slaves with disk tag
+                    type: int
+              steps:
+                - provision-slaves-with-cpu-tag:
+                    action: .provision-nodes
+                    parameters:
+                      roleName: "mesos-cpu-slave"
+                      hardwareId: "{$.cpu_tag_hardware}"
+                      quantity: "{$.slaves-cpu-hardware-quantity}"
+                    output:
+                      slaveCpuIps: ips
+                      slaveCpuDns: dns
+                - provision-slaves-with-memory-tag:
+                    action: .provision-nodes
+                    parameters:
+                      roleName: "mesos-memory-slave"
+                      hardwareId: "{$.memory_tag_hardware}"
+                      quantity: "{$.slaves-memory-hardware-quantity}"
+                    output:
+                      slaveMemoryIps: ips
+                      slaveMemoryDns: dns
+                - provision-slaves-with-disk-tag:
+                    action: .provision-nodes
+                    parameters:
+                      roleName: "mesos-disk-slave"
+                      hardwareId: "{$.disk_tag_hardware}"
+                      quantity: "{$.slaves-disk-hardware-quantity}"
+                    output:
+                      slaveDiskIps: ips
+                      slaveDiskDns: dns
+              return:
+                slaveCpuIps:
+                  value: "{$.slaveCpuIps}"
+                slaveMemoryIps:
+                  value: "{$.slaveMemoryIps}"
+                slaveDiskIps:
+                  value: "{$.slaveDiskIps}"
+
+          .install-ansible:
+              steps:
+                - install:
+                    action: execrun
+                    parameters:
+                        isSudo: true
+                        roles: [ "manager-node" ]
+                        command:
+                            - |
+                              apt-get install software-properties-common &&
+                              apt-add-repository ppa:ansible/ansible &&
+                              apt-get update &&
+                              apt-get install -y ansible
+
+          .generate-ssh-key:
+              steps:
+                - generate:
+                    action: execrun
+                    parameters:
+                        roles: [ "manager-node" ]
+                        command:
+                            - |
+                              ssh-keygen -t rsa -N "" -f ~/.ssh/aws.key &&
+                              chmod 600 ~/.ssh/aws.key
+
+          .prepare-masters-inventory-file:
+              parameters:
+                - serialized-masters-list:
+                    description: List with master ips
+              steps:
+                - prepare:
+                    action: execrun
+                    parameters:
+                      roles: [ "manager-node" ]
+                      command:
+                          - |
+                            if [[ ! -d ~/inventory ]]; then
+                              mkdir ~/inventory
+                            fi
+                            echo "[mesos_masters]" > ~/inventory/masters &&
+                            echo "{$.serialized-masters-list}" >> ~/inventory/masters &&
+                            echo "[mesos_masters:vars]" >> ~/inventory/masters &&
+                            echo "ansible_user=ubuntu" >> ~/inventory/masters &&
+                            echo "ansible_ssh_private_key_file=~/.ssh/aws.key" >> ~/inventory/masters
+
+          .prepare-slaves-inventory-file:
+              parameters:
+                - serialized-slaves-with-cpu-list:
+                    description: List with cpu slave ips
+                - serialized-slaves-with-memory-list:
+                    description: List with memory slave ips
+                - serialized-slaves-with-disk-list:
+                    description: List with disk slave ips
+              steps:
+                - prepare:
+                    action: execrun
+                    parameters:
+                      roles: [ "manager-node" ]
+                      command:
+                          - |
+                            if [[ ! -d ~/inventory ]]; then
+                              mkdir ~/inventory
+                            fi
+                            echo "[mesos_workers:children]" > ~/inventory/slaves &&
+                            echo "mesos_cpu_instances" >> ~/inventory/slaves &&
+                            echo "mesos_memory_instances" >> ~/inventory/slaves &&
+                            echo "mesos_disk_instances" >> ~/inventory/slaves &&
+                            echo "[mesos_cpu_instances]" >> ~/inventory/slaves &&
+                            echo "{$.serialized-slaves-with-cpu-list}" >> ~/inventory/slaves &&
+                            echo "[mesos_memory_instances]" >> ~/inventory/slaves &&
+                            echo "{$.serialized-slaves-with-memory-list}" >> ~/inventory/slaves &&
+                            echo "[mesos_disk_instances]" >> ~/inventory/slaves &&
+                            echo "{$.serialized-slaves-with-disk-list}" >> ~/inventory/slaves &&
+                            echo "[mesos_workers:vars]" >> ~/inventory/slaves  &&
+                            echo "ansible_user=ubuntu" >> ~/inventory/slaves &&
+                            echo "ansible_ssh_private_key_file=~/.ssh/aws.key" >> ~/inventory/slaves &&
+                            echo "[mesos_cpu_instances:vars]" >> ~/inventory/slaves &&
+                            echo "mesos_node_type=cpu-intensive" >> ~/inventory/slaves &&
+                            echo "[mesos_memory_instances:vars]" >> ~/inventory/slaves &&
+                            echo "mesos_node_type=memory-intensive" >> ~/inventory/slaves &&
+                            echo "[mesos_disk_instances:vars]" >> ~/inventory/slaves &&
+                            echo "mesos_node_type=disk-intensive" >> ~/inventory/slaves
+
+
+          .update-vars-file:
+              parameters:
+                - mesos-version:
+                    description: Mesos version
+                - mesos-package-version:
+                    description: Mesos package version
+                - marathon-version:
+                    description: Marathon version
+                - yaml-serialized-masters-list:
+                    description: Yaml formated master ips
+              steps:
+                - create-vars-file:
+                    action: execrun
+                    parameters:
+                        roles: [ "manager-node" ]
+                        command:
+                            - |
+                              echo "mesos_version: \"{$.mesos-version}\"" > params.yaml &&
+                              echo "mesos_package_version: \"{$.mesos-package-version}\"" >> params.yaml &&
+                              echo "marathon_version: \"{$.marathon-version}\"" >> params.yaml &&
+                              echo "mesos_master_hosts:" >> params.yaml &&
+                              echo "{$.yaml-serialized-masters-list}" >> params.yaml
+
+          .distribute-ssh-pub-key:
+              steps:
+                - get-ansible-ssh-pub-key:
+                    action: execrun
+                    parameters:
+                      roles: [ "manager-node" ]
+                      command:
+                          - |
+                            cat ~/.ssh/aws.key.pub
+                    output:
+                      ansible-pub-key: stdout
+                - distribute-ssh-pub-key:
+                    action: execrun
+                    precedingPhases: [ get-ansible-ssh-pub-key ]
+                    parameters:
+                      roles: [ "mesos-master", "mesos-cpu-slave", "mesos-memory-slave", "mesos-disk-slave" ]
+                      command:
+                          - |
+                            if [[ -z "`cat ~/.ssh/authorized_keys | grep "{$.ansible-pub-key[*][0]}"`" ]]; then
+                              echo "{$.ansible-pub-key[*][0]}" >> ~/.ssh/authorized_keys
+                            fi
+
+          .update-ansible-playbooks:
+              parameters:
+                - playbooks-url:
+                    description: URL to new tar.gz file with playbooks
+              steps:
+                - update-playbooks:
+                    action: execrun
+                    parameters:
+                      roles: [ "manager-node" ]
+                      command:
+                          - |
+                            rm -rf --preserve-root playbooks.tar.gz &&
+                            wget "{$.playbooks-url}" -O playbooks.tar.gz &&
+                            tar -zxf playbooks.tar.gz
+
+          .run-ansible:
+              steps:
+                - run-ansible:
+                    action: execrun
+                    parameters:
+                      roles: [ "manager-node" ]
+                      command:
+                          - |
+                            cd mesos-ansible &&
+                            ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i ../inventory playbook.yml --extra-vars "@../params.yaml"
+
+          .serialize-list:
+              parameters:
+                - arg:
+                    description: Argument to serialize
+              steps:
+                - serialize-as-csv:
+                    action: serialize
+                    parameters:
+                        format: CSV
+                        input: "{$.arg}"
+                    output:
+                        serialized-as-csv: serialized
+                - serialize-as-yaml:
+                    action: serialize
+                    parameters:
+                        format: yaml
+                        input: "{$.arg}"
+                    output:
+                        serialized-as-yaml: serialized
+              return:
+                as-csv:
+                  value: "{$.serialized-as-csv}"
+                as-yaml:
+                  value: "{$.serialized-as-yaml}"
+
+          .provision-nodes:
               parameters:
                 - roleName:
                     description: Role for the provisioned node
@@ -420,10 +668,9 @@ application:
                       imageId: "{$.ami}"
                       vmIdentity: "{$.identity}"
                       hardwareId: "{$.hardwareId}"
-                      quantity: "{$.quantity}"
+                      targetQuantity: "{$.quantity}"
                     output:
                       PublicIPs: ips
-
                 - set-hostname:
                     action: execrun
                     phase: post-provision

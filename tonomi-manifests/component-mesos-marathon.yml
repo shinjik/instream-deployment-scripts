@@ -3,11 +3,15 @@ application:
     input.ami: "us-west-1/ami-48db9d28"
     input.region: "us-west-1"
     input.identity: "ubuntu"
-    input.master_hardware: "t2.small"
     input.manager_hardware: "t2.micro"
-    input.slave_hardware: "t2.medium"
+    input.master_hardware: "t2.small"
     input.masters_quantity: "1"
-    input.slaves_quantity: "2"
+    input.slaves_cpu_hardware_quantity: 1
+    input.slaves_memory_hardware_quantity: 1
+    input.slaves_disk_hardware_quantity: 1
+    input.cpu_tag_hardware: "t2.micro"
+    input.memory_tag_hardware: "t2.micro"
+    input.disk_tag_hardware: "t2.micro"
     input.playbooks_url: "https://s3-us-west-1.amazonaws.com/streaming-artifacts/playbooks.tar.gz"
     input.mesos_version: "0.28.2"
     input.mesos_package_version: "2.0.27"
@@ -20,9 +24,13 @@ application:
       identity: "bind(vms#input.identity, manager-node#configuration.login)"
       manager_hardware: "bind(vms#input.manager_hardware, manager-node#configuration.hardwareId)"
       master_hardware: "bind(vms#input.master_hardware)"
-      slave_hardware: "bind(vms#input.slave_hardware)"
       masters_quantity: "bind(vms#input.masters_quantity)"
-      slaves_quantity: "bind(vms#input.slaves_quantity)"
+      slaves_cpu_hardware_quantity: "bind(vms#input.slaves_cpu_hardware_quantity)"
+      slaves_memory_hardware_quantity: "bind(vms#input.slaves_memory_hardware_quantity)"
+      slaves_disk_hardware_quantity: "bind(vms#input.slaves_disk_hardware_quantity)"
+      cpu_tag_hardware: "bind(vms#input.cpu_tag_hardware)"
+      memory_tag_hardware: "bind(vms#input.memory_tag_hardware)"
+      disk_tag_hardware: "bind(vms#input.disk_tag_hardware)"
       playbooks_url: "bind(vms#input.playbooks_url)"
       mesos_version: "bind(vms#input.mesos_version)"
       mesos_package_version: "bind(vms#input.mesos_package_version)"
@@ -31,7 +39,9 @@ application:
     Mesos:
       application-pic: "bind(metadata#output.mesos-pic)"
       manager: "bind(vms#result.Mesos_URL)"
-      slaves: "bind(vms#result.mesos_slaves)"
+      slaves_with_cpu_tag: "bind(vms#result.mesos_slaves_with_cpu_tag)"
+      slaves_with_memory_tag: "bind(vms#result.mesos_slaves_with_memory_tag)"
+      slaves_with_disk_tag: "bind(vms#result.mesos_slaves_with_disk_tag)"
 
     Marathon:
       application-pic: "bind(metadata#output.marathon-pic)"
@@ -96,20 +106,30 @@ application:
           master_hardware:
             type: configuration(string)
             name: Mesos master node hardware type
-          slave_hardware:
-            type: configuration(string)
-            name: Mesos slaves hardware type
           masters_quantity:
             type: configuration(string)
-            name: No. of mesos masters
-          slaves_quantity:
+            name: Quantity of mesos masters
+          slaves_cpu_hardware_quantity:
+            type: configuration(int)
+            name: Quantity of slaves with cpu tag
+          slaves_memory_hardware_quantity:
+            type: configuration(int)
+            name: Quantity of slaves with memory tag
+          slaves_disk_hardware_quantity:
+            type: configuration(int)
+            name: Quantity of slaves with disk tag
+          cpu_tag_hardware:
             type: configuration(string)
-            name: No. of mesos slaves
-
+            name: Hardware for instances with cpu tag
+          memory_tag_hardware:
+            type: configuration(string)
+            name: Hardware for instances with memory tag
+          disk_tag_hardware:
+            type: configuration(string)
+            name: Hardware for instances with disk tag
           playbooks_url:
             type: configuration(string)
             name: Ansible playbooks
-
           mesos_version:
             type: configuration(string)
             name: Mesos version
@@ -132,7 +152,13 @@ application:
           Marathon_URL:
             type: publish-signal(string)
             name: Marathon UI URL
-          mesos_slaves:
+          mesos_slaves_with_cpu_tag:
+            type: publish-signal(list<string>)
+            name: Mesos slaves
+          mesos_slaves_with_memory_tag:
+            type: publish-signal(list<string>)
+            name: Mesos slaves
+          mesos_slaves_with_disk_tag:
             type: publish-signal(list<string>)
             name: Mesos slaves
           scripts_url:
@@ -168,17 +194,41 @@ application:
                       masterIps: ips
                       masterDns: dns
 
-              - provision-slaves:
+              - provision-slaves-with-cpu-tag:
                   action: .provision-node
                   phase: provision-node
                   precedingPhases: [ get-env-props ]
                   parameters:
                       roleName: "mesos-slave"
-                      hardwareId: "{$.slave_hardware}"
-                      quantity: "{$.slaves_quantity}"
+                      hardwareId: "{$.cpu_tag_hardware}"
+                      quantity: "{$.slaves_cpu_hardware_quantity}"
                   output:
-                      slaveIps: ips
-                      slaveDns: dns
+                      slaveCpuIps: ips
+                      slaveCpuDns: dns
+
+              - provision-slaves-with-memory-tag:
+                  action: .provision-node
+                  phase: provision-node
+                  precedingPhases: [ get-env-props ]
+                  parameters:
+                      roleName: "mesos-slave"
+                      hardwareId: "{$.memory_tag_hardware}"
+                      quantity: "{$.slaves_memory_hardware_quantity}"
+                  output:
+                      slaveMemoryIps: ips
+                      slaveMemoryDns: dns
+
+              - provision-slaves-with-disk-tag:
+                  action: .provision-node
+                  phase: provision-node
+                  precedingPhases: [ get-env-props ]
+                  parameters:
+                      roleName: "mesos-slave"
+                      hardwareId: "{$.disk_tag_hardware}"
+                      quantity: "{$.slaves_disk_hardware_quantity}"
+                  output:
+                      slaveDiskIps: ips
+                      slaveDiskDns: dns
 
               - install-ansible:
                   action: execrun
@@ -241,14 +291,35 @@ application:
                   output:
                       yaml-serialized-masters-list: serialized
 
-              - serialize-slaves-list:
+              - serialize-slaves-with-cpu-list:
                   action: serialize
+                  phase: serialize-slaves-list
                   precedingPhases: [ distribute-ssh-pub-key ]
                   parameters:
                       format: CSV
-                      input: "{$.slaveIps}"
+                      input: "{$.slaveCpuIps}"
                   output:
-                      serialized-slaves-list: serialized
+                      serialized-slaves-with-cpu-list: serialized
+
+              - serialize-slaves-with-memory-list:
+                  action: serialize
+                  phase: serialize-slaves-list
+                  precedingPhases: [ distribute-ssh-pub-key ]
+                  parameters:
+                      format: CSV
+                      input: "{$.slaveMemoryIps}"
+                  output:
+                      serialized-slaves-with-memory-list: serialized
+
+              - serialize-slaves-with-disk-list:
+                  action: serialize
+                  phase: serialize-slaves-list
+                  precedingPhases: [ distribute-ssh-pub-key ]
+                  parameters:
+                      format: CSV
+                      input: "{$.slaveDiskIps}"
+                  output:
+                      serialized-slaves-with-disk-list: serialized
 
               - create-hosts-list:
                   action: execrun
@@ -259,14 +330,28 @@ application:
                           - |
                             echo "[mesos_masters]" > hosts &&
                             echo "{$.serialized-masters-list}" >> hosts &&
-                            echo "[mesos_workers]" >> hosts &&
-                            echo "{$.serialized-slaves-list}" >> hosts &&
+                            echo "[mesos_workers:children]" >> hosts &&
+                            echo "mesos_cpu_instances" >> hosts &&
+                            echo "mesos_memory_instances" >> hosts &&
+                            echo "mesos_disk_instances" >> hosts &&
+                            echo "[mesos_cpu_instances]" >> hosts &&
+                            echo "{$.serialized-slaves-with-cpu-list}" >> hosts &&
+                            echo "[mesos_memory_instances]" >> hosts &&
+                            echo "{$.serialized-slaves-with-memory-list}" >> hosts &&
+                            echo "[mesos_disk_instances]" >> hosts &&
+                            echo "{$.serialized-slaves-with-disk-list}" >> hosts &&
                             echo "[mesos_masters:vars]" >> hosts &&
                             echo "ansible_user=ubuntu" >> hosts &&
                             echo "ansible_ssh_private_key_file=~/.ssh/aws.key" >> hosts &&
                             echo "[mesos_workers:vars]" >> hosts  &&
                             echo "ansible_user=ubuntu" >> hosts &&
                             echo "ansible_ssh_private_key_file=~/.ssh/aws.key" >> hosts
+                            echo "[mesos_cpu_instances:vars]" >> hosts &&
+                            echo "mesos_node_type=cpu-intensive" >> hosts &&
+                            echo "[mesos_memory_instances:vars]" >> hosts &&
+                            echo "mesos_node_type=memory-intensive" >> hosts &&
+                            echo "[mesos_disk_instances:vars]" >> hosts &&
+                            echo "mesos_node_type=disk-intensive" >> hosts
 
               - create-vars-file:
                   action: execrun
@@ -309,8 +394,12 @@ application:
                   value: "http://{$.masterDns[*][0]}:5050/"
               - Marathon_URL:
                   value: "http://{$.masterDns[*][0]}:8080/"
-              - mesos_slaves:
-                  value: "{$.slaveIps}"
+              - mesos_slaves_with_cpu_tag:
+                  value: "{$.slaveCpuIps}"
+              - mesos_slaves_with_memory_tag:
+                  value: "{$.slaveMemoryIps}"
+              - mesos_slaves_with_disk_tag:
+                  value: "{$.slaveDiskIps}"
               - scripts_url:
                   value: "{$.playbooks_url}"
 

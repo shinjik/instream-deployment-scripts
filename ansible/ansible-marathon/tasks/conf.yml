@@ -35,6 +35,15 @@
 
 - name: Set --http-port option
   template: src=http_port.j2 dest=/etc/marathon/conf/http_port
+
+- name: Enable external_volumes feature 
+  copy: src=enable_features dest=/etc/marathon/conf/enable_features
+
+- name: Set authentication principal
+  copy: src=mesos_authentication_principal dest=/etc/marathon/conf/mesos_authentication_principal
+
+- name: Set mesos role
+  copy: src=mesos_role dest=/etc/marathon/conf/mesos_role
   
 - name: Upstart check
   stat: path=/etc/init/

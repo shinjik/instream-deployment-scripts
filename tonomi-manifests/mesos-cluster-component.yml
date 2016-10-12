@@ -6,13 +6,15 @@ application:
     input.manager_hardware: "t2.micro"
     input.master_hardware: "t2.small"
     input.masters_quantity: "1"
+    input.slaves_general_hardware_quantity: 1
     input.slaves_cpu_hardware_quantity: 1
     input.slaves_memory_hardware_quantity: 1
     input.slaves_disk_hardware_quantity: 1
+    input.general_tag_hardware: "t2.micro"
     input.cpu_tag_hardware: "t2.micro"
     input.memory_tag_hardware: "t2.micro"
     input.disk_tag_hardware: "t2.micro"
-    input.playbooks_url: "https://s3-us-west-1.amazonaws.com/maxim-gg/playbook.tar.gz"
+    input.playbooks_url: "https://github.com/shinjik/instream-deployment-scripts/archive/master.zip"
     input.mesos_version: "0.28.2"
     input.mesos_package_version: "2.0.27"
     input.marathon_version: "1.1.2"
@@ -25,9 +27,11 @@ application:
       manager_hardware: "bind(vms#input.manager_hardware, manager-node#configuration.hardwareId)"
       master_hardware: "bind(vms#input.master_hardware)"
       masters_quantity: "bind(vms#input.masters_quantity)"
+      slaves_general_hardware_quantity: "bind(vms#input.slaves_general_hardware_quantity)"
       slaves_cpu_hardware_quantity: "bind(vms#input.slaves_cpu_hardware_quantity)"
       slaves_memory_hardware_quantity: "bind(vms#input.slaves_memory_hardware_quantity)"
       slaves_disk_hardware_quantity: "bind(vms#input.slaves_disk_hardware_quantity)"
+      general_tag_hardware: "bind(vms#input.general_tag_hardware)"
       cpu_tag_hardware: "bind(vms#input.cpu_tag_hardware)"
       memory_tag_hardware: "bind(vms#input.memory_tag_hardware)"
       disk_tag_hardware: "bind(vms#input.disk_tag_hardware)"
@@ -39,11 +43,14 @@ application:
     Mesos:
       application-pic: "bind(metadata#output.mesos-pic)"
       manager: "bind(vms#result.Mesos_URL)"
+      slaves_with_general_tag: "bind(vms#result.mesos_slaves_with_general_tag)"
       slaves_with_cpu_tag: "bind(vms#result.mesos_slaves_with_cpu_tag)"
       slaves_with_memory_tag: "bind(vms#result.mesos_slaves_with_memory_tag)"
       slaves_with_disk_tag: "bind(vms#result.mesos_slaves_with_disk_tag)"
       scale-cluster: "bind(vms#actions.scale-cluster)"
       update-playbooks: "bind(vms#actions.update-playbooks)"
+      run-ansible: "bind(vms#actions.run-ansible)"
+      slaves_general_quantity: "bind(vms#result.slaves_general_quantity)"
       slaves_cpu_quantity: "bind(vms#result.slaves_cpu_quantity)"
       slaves_memory_quantity: "bind(vms#result.slaves_memory_quantity)"
       slaves_disk_quantity: "bind(vms#result.slaves_disk_quantity)"
@@ -114,6 +121,9 @@ application:
           masters_quantity:
             type: configuration(string)
             name: Quantity of mesos masters
+          slaves_general_hardware_quantity:
+            type: configuration(int)
+            name: Quantity of slaves with general tag
           slaves_cpu_hardware_quantity:
             type: configuration(int)
             name: Quantity of slaves with cpu tag
@@ -123,6 +133,9 @@ application:
           slaves_disk_hardware_quantity:
             type: configuration(int)
             name: Quantity of slaves with disk tag
+          general_tag_hardware:
+            type: configuration(string)
+            name: Hardware for instances with general tag
           cpu_tag_hardware:
             type: configuration(string)
             name: Hardware for instances with cpu tag
@@ -146,11 +159,14 @@ application:
             name: Mesos .deb package version
         actions:
           scale-cluster:
-            type: receive-command(int slaves-cpu-hardware-quantity, int slaves-memory-hardware-quantity, int slaves-disk-hardware-quantity)
+            type: receive-command(int slaves-general-hardware-quantity, int slaves-cpu-hardware-quantity, int slaves-memory-hardware-quantity, int slaves-disk-hardware-quantity)
             name: Scale cluster
           update-playbooks:
             type: receive-command(string playbooks-url)
             name: Update playbooks on manager node
+          run-ansible:
+            type: receive-command()
+            name: Run ansible
         result:
           Mesos_Manager:
             type: publish-signal(string)
@@ -164,6 +180,9 @@ application:
           Marathon_URL:
             type: publish-signal(string)
             name: Marathon UI URL
+          mesos_slaves_with_general_tag:
+            type: publish-signal(list<string>)
+            name: Mesos general slaves
           mesos_slaves_with_cpu_tag:
             type: publish-signal(list<string>)
             name: Mesos cpu intensive slaves
@@ -176,6 +195,9 @@ application:
           scripts_url:
             type: publish-signal(string)
             name: Marathon management scripts URL
+          slaves_general_quantity:
+            type: publish-signal(int)
+            name: Mesos general slaves quantity
           slaves_cpu_quantity:
             type: publish-signal(int)
             name: Mesos cpu intensive slaves quantity
@@ -228,6 +250,7 @@ application:
                   phase: provision-nodes
                   precedingPhases: [ get-env-props ]
                   parameters:
+                      slaves-general-hardware-quantity: "{$.slaves_general_hardware_quantity}"
                       slaves-cpu-hardware-quantity: "{$.slaves_cpu_hardware_quantity}"
                       slaves-memory-hardware-quantity: "{$.slaves_memory_hardware_quantity}"
                       slaves-disk-hardware-quantity: "{$.slaves_disk_hardware_quantity}"
@@ -248,6 +271,15 @@ application:
                   output:
                       serialized-masters-list: as-csv
                       yaml-serialized-masters-list: as-yaml
+
+              - serialize-slaves-with-general-list:
+                  action: .serialize-list
+                  phase: serialize-slaves-list
+                  precedingPhases: [ distribute-ssh-pub-key ]
+                  parameters:
+                      arg: "{$.slaveGeneralIps}"
+                  output:
+                      serialized-slaves-with-general-list: as-csv
 
               - serialize-slaves-with-cpu-list:
                   action: .serialize-list
@@ -286,6 +318,7 @@ application:
                   action: .prepare-slaves-inventory-file
                   precedingPhases: [ serialize-slaves-list ]
                   parameters:
+                      serialized-slaves-with-general-list: "{$.serialized-slaves-with-general-list}"
                       serialized-slaves-with-cpu-list: "{$.serialized-slaves-with-cpu-list}"
                       serialized-slaves-with-memory-list: "{$.serialized-slaves-with-memory-list}"
                       serialized-slaves-with-disk-list: "{$.serialized-slaves-with-disk-list}"
@@ -318,6 +351,8 @@ application:
                   value: "http://{$.masterDns[*][0]}:5050/"
               - Marathon_URL:
                   value: "http://{$.masterDns[*][0]}:8080/"
+              - mesos_slaves_with_general_tag:
+                  value: "{$.slaveGeneralIps}"
               - mesos_slaves_with_cpu_tag:
                   value: "{$.slaveCpuIps}"
               - mesos_slaves_with_memory_tag:
@@ -326,6 +361,8 @@ application:
                   value: "{$.slaveDiskIps}"
               - scripts_url:
                   value: "{$.playbooks_url}"
+              - slaves_general_quantity:
+                  value: "{$.slaves_general_hardware_quantity}"
               - slaves_cpu_quantity:
                   value: "{$.slaves_cpu_hardware_quantity}"
               - slaves_memory_quantity:
@@ -335,6 +372,9 @@ application:
 
           scale-cluster:
               parameters:
+                - slaves-general-hardware-quantity:
+                    description: Quantity of general-purpose slaves
+                    type: int
                 - slaves-cpu-hardware-quantity:
                     description: Quantity of slaves with cpu tag
                     type: int
@@ -344,15 +384,16 @@ application:
                 - slaves-disk-hardware-quantity:
                     description: Quantity of slaves with disk tag
                     type: int
-                    default: 1
               steps:
                 - provision-nodes:
                     action: .provision-slave-nodes
                     parameters:
+                        slaves-general-hardware-quantity: "{$.slaves-general-hardware-quantity}"
                         slaves-cpu-hardware-quantity: "{$.slaves-cpu-hardware-quantity}"
                         slaves-memory-hardware-quantity: "{$.slaves-memory-hardware-quantity}"
                         slaves-disk-hardware-quantity: "{$.slaves-disk-hardware-quantity}"
                     output:
+                        slaveGeneralIps: slaveGeneralIps
                         slaveCpuIps: slaveCpuIps
                         slaveMemoryIps: slaveMemoryIps
                         slaveDiskIps: slaveDiskIps
@@ -360,6 +401,15 @@ application:
                 - distribute-ssh-pub-key:
                     action: .distribute-ssh-pub-key
                     precedingPhases: [ provision-nodes ]
+
+                - serialize-slaves-with-general-list:
+                    action: .serialize-list
+                    phase: serialize-slaves-list
+                    precedingPhases: [ provision-nodes ]
+                    parameters:
+                        arg: "{$.slaveGeneralIps}"
+                    output:
+                        serialized-slaves-with-general-list: as-csv
 
                 - serialize-slaves-with-cpu-list:
                     action: .serialize-list
@@ -392,6 +442,7 @@ application:
                     action: .prepare-slaves-inventory-file
                     precedingPhases: [ serialize-slaves-list ]
                     parameters:
+                        serialized-slaves-with-general-list: "{$.serialized-slaves-with-general-list}"
                         serialized-slaves-with-cpu-list: "{$.serialized-slaves-with-cpu-list}"
                         serialized-slaves-with-memory-list: "{$.serialized-slaves-with-memory-list}"
                         serialized-slaves-with-disk-list: "{$.serialized-slaves-with-disk-list}"
@@ -401,18 +452,27 @@ application:
                     precedingPhases: [ prepare-slaves-inventory-file ]
 
               return:
+                - mesos_slaves_with_general_tag:
+                    value: "{$.slaveGeneralIps}"
                 - mesos_slaves_with_cpu_tag:
                     value: "{$.slaveCpuIps}"
                 - mesos_slaves_with_memory_tag:
                     value: "{$.slaveMemoryIps}"
                 - mesos_slaves_with_disk_tag:
                     value: "{$.slaveDiskIps}"
+                - slaves_general_quantity:
+                    value: "{$.slaves-general-hardware-quantity}"
                 - slaves_cpu_quantity:
                     value: "{$.slaves-cpu-hardware-quantity}"
                 - slaves_memory_quantity:
                     value: "{$.slaves-memory-hardware-quantity}"
                 - slaves_disk_quantity:
                     value: "{$.slaves-disk-hardware-quantity}"
+
+          run-ansible:
+              steps:
+                - run:
+                    action: .run-ansible
 
           update-playbooks:
               parameters:
@@ -426,6 +486,9 @@ application:
 
           .provision-slave-nodes:
               parameters:
+                - slaves-general-hardware-quantity:
+                    description: Quantity of general-purpose slaves
+                    type: int
                 - slaves-cpu-hardware-quantity:
                     description: Quantity of slaves with cpu tag
                     type: int
@@ -436,6 +499,15 @@ application:
                     description: Quantity of slaves with disk tag
                     type: int
               steps:
+                - provision-slaves-with-general-tag:
+                    action: .provision-nodes
+                    parameters:
+                      roleName: "mesos-general-slave"
+                      hardwareId: "{$.general_tag_hardware}"
+                      quantity: "{$.slaves-general-hardware-quantity}"
+                    output:
+                      slaveGeneralIps: ips
+                      slaveGeneralDns: dns
                 - provision-slaves-with-cpu-tag:
                     action: .provision-nodes
                     parameters:
@@ -464,6 +536,8 @@ application:
                       slaveDiskIps: ips
                       slaveDiskDns: dns
               return:
+                slaveGeneralIps:
+                  value: "{$.slaveGeneralIps}"
                 slaveCpuIps:
                   value: "{$.slaveCpuIps}"
                 slaveMemoryIps:
@@ -483,7 +557,7 @@ application:
                               apt-get install software-properties-common &&
                               apt-add-repository ppa:ansible/ansible &&
                               apt-get update &&
-                              apt-get install -y ansible
+                              apt-get install -y ansible unzip
 
           .generate-ssh-key:
               steps:
@@ -518,6 +592,8 @@ application:
 
           .prepare-slaves-inventory-file:
               parameters:
+                - serialized-slaves-with-general-list:
+                    description: List with general slave ips
                 - serialized-slaves-with-cpu-list:
                     description: List with cpu slave ips
                 - serialized-slaves-with-memory-list:
@@ -535,9 +611,12 @@ application:
                               mkdir ~/inventory
                             fi
                             echo "[mesos_workers:children]" > ~/inventory/slaves &&
+                            echo "mesos_general_instances" >> ~/inventory/slaves &&
                             echo "mesos_cpu_instances" >> ~/inventory/slaves &&
                             echo "mesos_memory_instances" >> ~/inventory/slaves &&
                             echo "mesos_disk_instances" >> ~/inventory/slaves &&
+                            echo "[mesos_general_instances]" >> ~/inventory/slaves &&
+                            echo "{$.serialized-slaves-with-general-list}" >> ~/inventory/slaves &&
                             echo "[mesos_cpu_instances]" >> ~/inventory/slaves &&
                             echo "{$.serialized-slaves-with-cpu-list}" >> ~/inventory/slaves &&
                             echo "[mesos_memory_instances]" >> ~/inventory/slaves &&
@@ -547,6 +626,8 @@ application:
                             echo "[mesos_workers:vars]" >> ~/inventory/slaves  &&
                             echo "ansible_user=ubuntu" >> ~/inventory/slaves &&
                             echo "ansible_ssh_private_key_file=~/.ssh/aws.key" >> ~/inventory/slaves &&
+                            echo "[mesos_general_instances:vars]" >> ~/inventory/slaves &&
+                            echo "mesos_node_type=general" >> ~/inventory/slaves &&
                             echo "[mesos_cpu_instances:vars]" >> ~/inventory/slaves &&
                             echo "mesos_node_type=cpu-intensive" >> ~/inventory/slaves &&
                             echo "[mesos_memory_instances:vars]" >> ~/inventory/slaves &&
@@ -593,7 +674,7 @@ application:
                     action: execrun
                     precedingPhases: [ get-ansible-ssh-pub-key ]
                     parameters:
-                      roles: [ "mesos-master", "mesos-cpu-slave", "mesos-memory-slave", "mesos-disk-slave" ]
+                      roles: [ "mesos-master", "mesos-general-slave", "mesos-cpu-slave", "mesos-memory-slave", "mesos-disk-slave" ]
                       command:
                           - |
                             if [[ -z "`cat ~/.ssh/authorized_keys | grep "{$.ansible-pub-key[*][0]}"`" ]]; then
@@ -603,7 +684,7 @@ application:
           .update-ansible-playbooks:
               parameters:
                 - playbooks-url:
-                    description: URL to new tar.gz file with playbooks
+                    description: URL to new zip file with playbooks
               steps:
                 - update-playbooks:
                     action: execrun
@@ -611,9 +692,15 @@ application:
                       roles: [ "manager-node" ]
                       command:
                           - |
-                            rm -rf --preserve-root playbooks.tar.gz &&
-                            wget "{$.playbooks-url}" -O playbooks.tar.gz &&
-                            tar -zxf playbooks.tar.gz
+                            rm -rf --preserve-root playbooks.zip &&
+                            wget "{$.playbooks-url}" -O playbooks.zip &&
+                            folder=`echo "{$.playbooks-url}" | cut -d/ -f 5` &&
+                            branch=`echo "{$.playbooks-url}" | sed -n 's/\(.*\)archive\/\(.*\).zip/\2/p'` &&
+                            rm -rf --preserve-root ./ansible-playbook &&
+                            rm -rf $${{folder}}-$${{branch}} &&
+                            unzip playbooks.zip &&
+                            mv $${{folder}}-$${{branch}}/ansible-playbook ansible-playbook &&
+                            rm -rf $${{folder}}-$${{branch}}
 
           .run-ansible:
               steps:
@@ -623,8 +710,8 @@ application:
                       roles: [ "manager-node" ]
                       command:
                           - |
-                            cd mesos-ansible &&
-                            ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i ../inventory playbook.yml --extra-vars "@../params.yaml"
+                            cd ansible-playbook &&
+                            ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i ../inventory ./playbook.yml --extra-vars "@../params.yaml"
 
           .serialize-list:
               parameters:

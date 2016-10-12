@@ -81,15 +81,6 @@ application:
                     vmIdentity: 'ubuntu'
                   output:
                     result-ips: ips
-              - download-scripts:
-                  action: execrun
-                  precedingPhases: [ provision-vm, get-env-props ]
-                  parameters:
-                      roles: [ "manager-node" ]
-                      command:
-                          - |
-                            wget "{$.signals.marathon-manager.scripts_url}" -O playbooks.tar.gz &&
-                            tar -zxf playbooks.tar.gz
             return:
               - Marathon_URL:
                   description: "Marathon UI URL"

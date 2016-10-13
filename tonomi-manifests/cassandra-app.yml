@@ -24,12 +24,13 @@ application:
                 configuration:
                     cpu: configuration(string)
                     ram: configuration(int)
-                    disk: configuration(int)
+                    #disk: configuration(int)
                     #instances: configuration(int)
                     #imageId: configuration(string)
                     #portMappings: configuration(list<map<string, string>>)
                     #cmd: configuration(string)
                     name: configuration(string)
+                    volumeSize: configuration(int)
                 cassandra:
                     nativePort: publish-signal(string)
                     thriftPort: publish-signal(string)

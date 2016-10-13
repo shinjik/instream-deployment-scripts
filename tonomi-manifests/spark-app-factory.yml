@@ -1,37 +1,68 @@
+<<<<<<< 654926fceaa6339f08ef0391a8cc951a9ac629c1
 application: 
+=======
+application:
+>>>>>>> Add tonomi kit file and manifests
     interfaces:
         component:
             "*": bind(factory#component.*)
         spark:
             spark-by-id: bind(factory#factory.instances)
+<<<<<<< 654926fceaa6339f08ef0391a8cc951a9ac629c1
         
         configuration:
             "*": bind(factory#configuration.*)
       
+=======
+
+        configuration:
+            "*": bind(factory#configuration.*)
+
+>>>>>>> Add tonomi kit file and manifests
     configuration:
         component.application: "Spark on marathon"
         component.discoveryScript: /spark/discover.py
         component.discoverySchedule: "0/30 * * * * ? *"
+<<<<<<< 654926fceaa6339f08ef0391a8cc951a9ac629c1
         
         
     components: 
         factory:
             type: scripted.ComponentFactory 
+=======
+
+
+    components:
+        factory:
+            type: scripted.ComponentFactory
+>>>>>>> Add tonomi kit file and manifests
             interfaces:
                 configuration:
                     marathonURL: configuration(string)
                 apps:
                     app-by-id: consume-signal(map<string,string>)
+<<<<<<< 654926fceaa6339f08ef0391a8cc951a9ac629c1
             
+=======
+
+>>>>>>> Add tonomi kit file and manifests
         scripting:
             type: reference.Service
             interfaces:
                 scripting:
+<<<<<<< 654926fceaa6339f08ef0391a8cc951a9ac629c1
                     execute: receive-command(string script, object arguments => object results)  
         marathon:
             type: reference.Service
             interfaces:
                 apps: 
+=======
+                    execute: receive-command(string script, object arguments => object results)
+        marathon:
+            type: reference.Service
+            interfaces:
+                apps:
+>>>>>>> Add tonomi kit file and manifests
                     app-by-id: publish-signal(map<string,string>)
 
     bindings:

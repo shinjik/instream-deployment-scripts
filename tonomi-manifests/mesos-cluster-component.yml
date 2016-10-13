@@ -255,6 +255,7 @@ application:
                       slaves-memory-hardware-quantity: "{$.slaves_memory_hardware_quantity}"
                       slaves-disk-hardware-quantity: "{$.slaves_disk_hardware_quantity}"
                   output:
+                      slaveGeneralIps: slaveGeneralIps
                       slaveCpuIps: slaveCpuIps
                       slaveMemoryIps: slaveMemoryIps
                       slaveDiskIps: slaveDiskIps

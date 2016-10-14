@@ -1,0 +1,29 @@
+{
+    "id": "/frankenstein/tw-consumer/dh",
+    "cpus": 0.1,
+    "mem": 256,
+    
+    "cmd": "java -cp ${MESOS_SANDBOX}/twitter-consumer-1.0-SNAPSHOT-jar-with-dependencies.jar movieTweets \"Deepwater Horizon\" tweetStream 2016-09-22",
+    "instances": 1,
+    "container": {
+        "type": "DOCKER",
+        "docker": {
+            "image": "java:8",
+            "network": "BRIDGE",
+            "portMappings": [
+                
+            ]
+            
+        }
+    },
+    "env": {
+        "KAFKA_BROKERS": "172.22.4.107:11000",
+        "TWITTER_ACCESS_TOKEN": "763500436963758082-Zc0iTCY8OV0JYfbh2ynjQG164c1TYj7",
+        "TWITTER_ACCESS_TOKEN_SECRET": "oEjkHNQ3GzwXJv6yPXekIY2WQi8wqIc27M979U8Z4mq7W",
+        "TWITTER_CONSUMER_SECRET": "kxUi7IUeRfdwY2ni7Wl8US8924F7uEXdlt9oioLQeE5a09xNaE",
+        "TWITTER_CONSUMER_KEY": "ODA4huCCW1n1PkHgADSVE1VNr"
+    },
+    "fetch": [
+        { "uri": "https://s3-us-west-1.amazonaws.com/streaming-artifacts/twitter-consumer-1.0-SNAPSHOT-jar-with-dependencies.jar", "executable": false, "cache": false }
+    ]
+}

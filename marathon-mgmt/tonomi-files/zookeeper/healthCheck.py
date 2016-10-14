@@ -30,7 +30,7 @@ for appid in app_ids:
             'flags': {
                 'active': True,
                 'converging': False,
-                'failed': app.marathon_model['tasksUnhealthy'] > 0 #bool(vm.model.get('failure'))
+                'failed': app._model['tasksUnhealthy'] > 0 #bool(vm.model.get('failure'))
             }
         }
         
@@ -40,10 +40,10 @@ for appid in app_ids:
             
             'compute': {
                 'signals': {
-                    'ram': app.marathon_model['mem'],
-                    'cpu': app.marathon_model['cpus'],
-                    'disk': app.marathon_model['disk'],
-                    'instances': app.marathon_model['instances'],
+                    'ram': app._model['mem'],
+                    'cpu': app._model['cpus'],
+                    'disk': app._model['disk'],
+                    'instances': app._model['instances'],
                     #'portMappings': port_mappings
                 }
             },
@@ -62,16 +62,7 @@ for appid in app_ids:
                 'key': app.id
             }
         }
-        # if 'volumes' in vm.model:
-        #     for volid in vm.model['volumes']:
-        #         vol = fvol.load(volid)
-        #         color = vol.color if vol else 'unknown'
-        #         components[color]['components'][volid] = {
-        #             'reference': {
-        #                 'mapping': 'volumes.volume-by-id',
-        #                 'key': volid
-        #             }
-        #         }
+
         
         app_infos[appid] = {
             'instanceId': app.id,
@@ -81,27 +72,6 @@ for appid in app_ids:
             'components': components,
         }
 
-        # entries = []
-        # if 'tasks' in vm.model:
-        #     remaining_tasks = []
-        #     for task in vm.model['tasks']:
-        #         if task['timestamp'] <= datetime.datetime.utcnow().timestamp():
-        #             entries.append({
-        #                 'severity': 'INFO',
-        #                 'message': "Task '{}' executed".format(task['task'])
-        #             })
-        #         else:
-        #             remaining_tasks.append(task)
-        #     if remaining_tasks:
-        #         vm.model['tasks'] = remaining_tasks
-        #     else:
-        #         del vm.model['tasks']
-        #     fvm.save(vm)
-
-        # if entries:
-        #     vm_infos[vmid]['$pushAll'] = {
-        #         'activityLog': entries
-        #     }
 
     else:
         # a vm is absent, set its status to destroyed

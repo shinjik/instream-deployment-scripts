@@ -49,8 +49,10 @@ for appid in app_ids:
             },
             
             'cassandra': {
-                'nativePort': str(port_mappings['9042']),
-                'thriftPort': str(port_mappings['9160'])
+                'signals': {
+                    'nativePort': str(port_mappings['9042']),
+                    'thriftPort': str(port_mappings['9160'])
+                }
             }
         }
 

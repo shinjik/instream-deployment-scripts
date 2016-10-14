@@ -48,30 +48,21 @@ for appid in app_ids:
                 }
             },
             
-            'redis': {
+            'ui': {
                 'signals': {
-                    'lbPort': str(port_mappings['6379'])
+                    'lbPort': str(port_mappings['3000'])
                 }
             }
         }
 
         components = multidict()
-        components['redis-container'] = {
+        components['ui'] = {
             'reference': {
                 'mapping': 'apps.app-by-id',
                 'key': app.id
             }
         }
-        # if 'volumes' in vm.model:
-        #     for volid in vm.model['volumes']:
-        #         vol = fvol.load(volid)
-        #         color = vol.color if vol else 'unknown'
-        #         components[color]['components'][volid] = {
-        #             'reference': {
-        #                 'mapping': 'volumes.volume-by-id',
-        #                 'key': volid
-        #             }
-        #         }
+        
         
         app_infos[appid] = {
             'instanceId': app.id,
@@ -81,30 +72,9 @@ for appid in app_ids:
             'components': components,
         }
 
-        # entries = []
-        # if 'tasks' in vm.model:
-        #     remaining_tasks = []
-        #     for task in vm.model['tasks']:
-        #         if task['timestamp'] <= datetime.datetime.utcnow().timestamp():
-        #             entries.append({
-        #                 'severity': 'INFO',
-        #                 'message': "Task '{}' executed".format(task['task'])
-        #             })
-        #         else:
-        #             remaining_tasks.append(task)
-        #     if remaining_tasks:
-        #         vm.model['tasks'] = remaining_tasks
-        #     else:
-        #         del vm.model['tasks']
-        #     fvm.save(vm)
-
-        # if entries:
-        #     vm_infos[vmid]['$pushAll'] = {
-        #         'activityLog': entries
-        #     }
-
+        
     else:
-        # a vm is absent, set its status to destroyed
+        # set status to destroyed
         app_infos[appid] = {
             'status': {
                 'flags': {

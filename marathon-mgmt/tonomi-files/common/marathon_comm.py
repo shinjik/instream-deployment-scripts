@@ -21,7 +21,7 @@ class MarathonApp:
     def id(self, value):
         self.marathon_model['id'] = value
 
-    
+
 
     def __str__(self):
         return "MarathonApp({})".format(self.id)
@@ -57,7 +57,7 @@ def list_apps(url, filters={}):
     if filters:
         for k in list(filters.keys()):
             result = filter(lambda x: x.get('labels', {}).get(k, None) == filters[k], result)
-    
+
     return map(lambda x: MarathonApp(x), result)
 
 def info(url, app_id):
@@ -65,6 +65,14 @@ def info(url, app_id):
     try:
         res = make_request('GET', url + "/v2/apps" + app_id)
         return MarathonApp(res['app'])
+    except Exception:
+        return None
+
+def get_app_info(url, app_id):
+    res = None
+    try:
+        res = make_request('GET', url + "/v2/apps" + app_id)
+        return res['app']
     except Exception:
         return None
 
@@ -87,15 +95,15 @@ def create(url, configuration):
                 "hostPort": 0,
                 "servicePort": int(p[list(p.keys())[0]]),
                 "protocol": "tcp"
-            
+
             })
-        
+
     app_definition = {
         "id": configuration['configuration.name'],
         "cpus": float(configuration['configuration.cpu']),
         "mem": configuration['configuration.ram'],
         "disk": configuration['configuration.disk'],
-        
+
         "instances": configuration['configuration.instances'],
         "container": {
             "type": "DOCKER",
@@ -103,16 +111,26 @@ def create(url, configuration):
                 "image": configuration['configuration.imageId'],
                 "network": "BRIDGE",
                 "portMappings": portMappings
-                
+
             }
         }
     }
+    if configuration.get('configuration.disk', None):
+        app_definition['disk'] = configuration['configuration.disk']
     if configuration.get('configuration.labels', None):
         app_definition['labels'] = configuration['configuration.labels']
     if configuration.get('configuration.env', None):
         app_definition['env'] = configuration['configuration.env']
     if configuration.get('configuration.constraints', None):
         app_definition['constraints'] = configuration['configuration.constraints']
+    if configuration.get('configuration.cmd', None):
+        app_definition['cmd'] = configuration['configuration.cmd']
+    if configuration.get('volumes', None):
+        app_definition['container']['volumes'] = configuration['volumes']
+    if configuration.get('residency', None):
+        app_definition['container']['residency'] = configuration['residency']
+    if configuration.get('fetch', None):
+        app_definition['fetch'] = configuration['fetch']
 
 
     res = make_request('POST', url + "/v2/apps", json.dumps(app_definition))

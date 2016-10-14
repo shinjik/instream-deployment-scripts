@@ -78,7 +78,7 @@ for appid in app_ids:
 
                 }
             if app['container'].get('docker', None):
-                t['portMappings'] = { p['containerPort']: task['ports'][i] for i,p in enumerate(app['container']['docker']['portMappings'])}
+                t['portMappings'] = { str(p['containerPort']): str(task['ports'][i]) for i,p in enumerate(app['container']['docker']['portMappings'])}
             else:
                 t['ports'] = task['ports']
             tasks.append(t)

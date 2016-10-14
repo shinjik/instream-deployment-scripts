@@ -49,7 +49,9 @@ for appid in app_ids:
             },
             
             'kafka': {
-                'lbPort': str(port_mappings['9092'])
+                'signals': {
+                    'lbPort': str(port_mappings['9092'])
+                }
             }
         }
 

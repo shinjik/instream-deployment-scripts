@@ -17,16 +17,21 @@ instance_results = {}
 for app in app_ids:
     #command_id = list(arguments.get('instances', {}).get(app).get('commands').keys())[0]
     configuration = arguments.get('launch-instances').get(app).get('configuration')
-    configuration['configuration.portMappings'] = [{'9092':'0'}]
-    configuration['configuration.imageId'] = 'wurstmeister/kafka'
-    configuration['configuration.labels'] = {'_tonomi_application': 'kafka'}
+    configuration['configuration.portMappings'] = [{'8088':'0'},{'8042':'0'},{'4040':'0'},{'2122':'0'}]
+    configuration['configuration.imageId'] = 'sequenceiq/spark:1.6.0'
+    configuration['configuration.labels'] = {'_tonomi_application': 'spark'}
+    cassandra = configuration['configuration.cassandraEndpoint'].split(':')
+    redis = configuration['configuration.redisEndpoint'].split(':')
     configuration['configuration.env'] = {
-        "KAFKA_ZOOKEEPER_CONNECT": configuration['configuration.zookeeperEndpoint'],
-        "KAFKA_CREATE_TOPICS": configuration['configuration.topics'],
-        "KAFKA_ADVERTISED_HOST_NAME": configuration['configuration.advertisedHost'],
-        #"KAFKA_ADVERTISED_PORT": configuration['configuration.advertisedPort'],
-        "KAFKA_HEAP_OPTS": "-Xmx512m -Xms512m"
+        "CASSANDRA_HOST": cassandra[0],
+        "CASSANDRA_PORT": cassandra[1],
+        "KAFKA_BROKER_LIST": configuration['configuration.kafkaBrokers'],
+        "REDIS_HOST": redis[0],
+        "REDIS_PORT": redis[1]  
     }  
+    configuration['configuration.cmd'] = "bash ${MESOS_SANDBOX}/streaming-runner.sh"
+    configuration['fetch'] = [{ "uri": configuration['configuration.applicationUrl'], "executable": False, "cache": False}]
+
     marathon_comm.create(marathon_url, configuration)
 
     instance_results[configuration['configuration.name']] = {

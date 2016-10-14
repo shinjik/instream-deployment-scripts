@@ -1,0 +1,45 @@
+application:
+    interfaces:
+        configuration:
+            "*": bind(application#configuration.*)
+        redis:
+            "*": bind(application#redis.*)
+        zookeeper:
+            "*": bind(application#zookeeper.*)
+        entrypoint:
+            "*": bind(application#entrypoint.*)
+        control:
+            "*": bind(application#control.*)
+    components: 
+        application:
+            type: scripted.Component 
+            configuration:
+                factory.name: In-stream environment on marathon Factory
+                factory.launchScript: /isp-environment/create.py
+                factory.destroyScript: /isp-environment/destroy.py
+                factory.healthCheckScript: /isp-environment/healthCheck.py
+                factory.reconfigurationScript: /isp-environment/reconfigure.py
+                factory.commandScripts:
+                    control.restart: /isp-environment/restart.py
+                    control.scale: /isp-environment/scale.py
+            interfaces:
+                configuration:
+
+                    #imageId: configuration(string)
+                    #portMappings: configuration(list<map<string, string>>)
+                    #cmd: configuration(string)
+                    name: configuration(string)
+                redis:
+                    lbPort: publish-signal(string)
+                zookeeper:
+                    lbPort: publish-signal(string)
+                    ensembleUrl: publish-signal(string)
+                    ensembleUrlLB: publish-signal(string)
+                    #localPorts: publish-signal(list(string))
+                entrypoint:
+                    URL: publish-signal(string)
+
+
+                control:
+                    restart: receive-command()
+                    scale: receive-command(int instances)

@@ -43,8 +43,8 @@
         "KAFKA_BROKER_LIST": "172.22.4.107:11000",
         "CASSANDRA_HOST": "172.22.4.36",
         "CASSANDRA_PORT": "31056",
-        "REDIS_HOST": "172.22.4.36",
-        "REDIS_PORT": "31529"
+        "REDIS_HOST": "172.22.4.37",
+        "REDIS_PORT": "31448"
     },
     "fetch": [
         { "uri": "https://s3-us-west-1.amazonaws.com/streaming-artifacts/in-stream-tweets-analyzer.tar.gz", "executable": false, "cache": false }

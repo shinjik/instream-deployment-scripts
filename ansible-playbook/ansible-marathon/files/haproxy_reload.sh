@@ -55,34 +55,20 @@ EOF
   done
 }
 
-function update_haproxy_cfg {
-  header > /etc/haproxy/haproxy.cfg
-  apps >> /etc/haproxy/haproxy.cfg
-}
+header > /etc/haproxy/haproxy.cfg.new
+apps >> /etc/haproxy/haproxy.cfg.new
 
-function get_active_ports {
-  grep listen /etc/haproxy/haproxy.cfg | sed -n 's/listen \(.*\)\-\([0-9]*\)/\2/p'
-}
+if ! cmp -s /etc/haproxy/haproxy.cfg /etc/haproxy/haproxy.cfg.new; then
+  mv /etc/haproxy/haproxy.cfg.new /etc/haproxy/haproxy.cfg
+  ports=`grep listen /etc/haproxy/haproxy.cfg | sed -n 's/listen \(.*\)\-\([0-9]*\)/\2/p'`
 
-function add_iptable_rules {
-  for port in "$@"; do
+  for port in "${ports[@]}"; do
     iptables -I INPUT -p tcp --dport ${port} --syn -j DROP
   done
-}
 
-function remove_iptable_rules {
-  for port in "$@"; do
+  /usr/sbin/haproxy -f /etc/haproxy/haproxy.cfg -p /var/run/haproxy.pid -sf $(cat /var/run/haproxy.pid)
+
+  for port in "${ports[@]}"; do
     iptables -D INPUT -p tcp --dport ${port} --syn -j DROP
   done
-}
-
-function reload_haproxy {
-  /usr/sbin/haproxy -f /etc/haproxy/haproxy.cfg -p /var/run/haproxy.pid -sf $(cat /var/run/haproxy.pid)
-}
-
-
-update_haproxy_cfg
-ports=`get_active_ports`
-add_iptable_rules $ports
-reload_haproxy
-remove_iptable_rules $ports
+fi

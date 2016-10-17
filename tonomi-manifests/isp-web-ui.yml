@@ -2,30 +2,24 @@ application:
     interfaces:
         configuration:
             "*": bind(application#configuration.*)
-        spark:
-            "*": bind(application#spark.*)
+        ui:
+            "*": bind(application#ui.*)
         compute:
             "*": bind(application#compute.*)
         control:
             "*": bind(application#control.*)
-<<<<<<< 654926fceaa6339f08ef0391a8cc951a9ac629c1
-    components: 
-        application:
-            type: scripted.Component 
-=======
     components:
         application:
             type: scripted.Component
->>>>>>> Add tonomi kit file and manifests
             configuration:
-                factory.name: Spark on marathon Factory
-                factory.launchScript: /spark/create.py
-                factory.destroyScript: /spark/destroy.py
-                factory.healthCheckScript: /spark/healthCheck.py
-                factory.reconfigurationScript: /spark/reconfigure.py
+                factory.name: ISP web UI on marathon Factory
+                factory.launchScript: /web-ui/create.py
+                factory.destroyScript: /web-ui/destroy.py
+                factory.healthCheckScript: /web-ui/healthCheck.py
+                factory.reconfigurationScript: /web-ui/reconfigure.py
                 factory.commandScripts:
-                    control.restart: /spark/restart.py
-                    control.scale: /spark/scale.py
+                    control.restart: /marathon/restart.py
+                    control.scale: /marathon/scale.py
             interfaces:
                 configuration:
                     cpu: configuration(string)
@@ -36,11 +30,9 @@ application:
                     #portMappings: configuration(list<map<string, string>>)
                     #cmd: configuration(string)
                     name: configuration(string)
-                    applicationUrl: configuration(string)
-                    kafkaBrokers: configuration(string)
                     cassandraEndpoint: configuration(string)
-                    redisEndpoint: configuration(string)
-                spark:
+                    applicationUrl: configuration(string)
+                ui:
                     lbPort: publish-signal(string)
                     #localPorts: publish-signal(list(string))
                 compute:

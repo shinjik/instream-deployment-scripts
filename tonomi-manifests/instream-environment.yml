@@ -6,13 +6,21 @@ application:
             "*": bind(application#redis.*)
         zookeeper:
             "*": bind(application#zookeeper.*)
-        entrypoint:
-            "*": bind(application#entrypoint.*)
+        kafka:
+            "*": bind(application#kafka.*)
+        cassandra:
+            "*": bind(application#cassandra.*)
+        spark:
+            "*": bind(application#spark.*)
+        application-entrypoint:
+            "*": bind(application#application-entrypoint.*)
+        web-ui:
+            "*": bind(application#web-ui.*)
         control:
             "*": bind(application#control.*)
-    components: 
+    components:
         application:
-            type: scripted.Component 
+            type: scripted.Component
             configuration:
                 factory.name: In-stream environment on marathon Factory
                 factory.launchScript: /isp-environment/create.py
@@ -31,12 +39,28 @@ application:
                     name: configuration(string)
                 redis:
                     lbPort: publish-signal(string)
+                    instanceEndpoints: publish-signal(string)
+                    instanceEndpointLB: publish-signal(string)
                 zookeeper:
                     lbPort: publish-signal(string)
                     ensembleUrl: publish-signal(string)
                     ensembleUrlLB: publish-signal(string)
                     #localPorts: publish-signal(list(string))
-                entrypoint:
+                kafka:
+                    lbPort: publish-signal(string)
+                    endpoints: publish-signal(string)
+                    endpointLB: publish-signal(string)
+                cassandra:
+                    lbPort: publish-signal(string)
+                    endpoints: publish-signal(string)
+                    endpointLB: publish-signal(string)
+                spark:
+                    sparkManagers: publish-signal(string)
+                    sparkManagerLB: publish-signal(string)
+                web-ui:
+                    endpoints: publish-signal(list<string>)
+                    URL: publish-signal(string)
+                application-entrypoint:
                     URL: publish-signal(string)
 
 

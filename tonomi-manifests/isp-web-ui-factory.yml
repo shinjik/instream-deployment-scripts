@@ -1,16 +1,16 @@
-application: 
+application:
     interfaces:
         component:
             "*": bind(factory#component.*)
-        cassandra:
-            cassandra-by-id: bind(factory#factory.instances)
+        web-ui:
+            web-ui-by-id: bind(factory#factory.instances)
 
         configuration:
             "*": bind(factory#configuration.*)
 
     configuration:
-        component.application: "Cassandra on marathon"
-        component.discoveryScript: /cassandra/discover.py
+        component.application: "ISP web UI on marathon"
+        component.discoveryScript: /web-ui/discover.py
         component.discoverySchedule: "0/30 * * * * ? *"
 
 

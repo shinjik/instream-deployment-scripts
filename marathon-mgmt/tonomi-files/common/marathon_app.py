@@ -5,10 +5,7 @@ class MarathonApplication:
     _model = {}
     _type = 'generic'
 
-    def __init__(self, marathon_url):
-        self.marathon_url = marathon_url
-
-    def __init__(self, marathon_url, model):
+    def __init__(self, marathon_url, model={}):
         self.marathon_url = marathon_url
         self._model = model
 
@@ -19,6 +16,14 @@ class MarathonApplication:
     @id.setter
     def id(self, value):
         self._model['id'] = value
+
+    @property
+    def environment_name(self):
+        return self._environment_name
+    @environment_name.setter
+    def environment_name(self, value):
+        self._environment_name = value
+    
 
     @property
     def type(self):
@@ -55,6 +60,13 @@ class MarathonApplication:
     def load(self, app_id):
         self._model = marathon_comm.get_app_info(self.marathon_url, app_id)
 
+    def create(self, configurations = None):
+        if not configurations:
+            configurations = self._get_creation_defaults()
+        for conf in configurations:
+            if self._environment_name:
+                conf['configuration.labels'].update({'_tonomi_environment': self._environment_name})
+            marathon_comm.create(self.marathon_url, conf)
 
     # app-related logic goes here
 

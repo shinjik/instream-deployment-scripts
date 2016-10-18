@@ -4,19 +4,21 @@ import sys
 import yaml
 
 import marathon_comm
-
+from model import InstreamEnvironment
 
 
 arguments = yaml.safe_load(sys.stdin)
 #yaml.safe_dump(arguments, sys.stderr)
 marathon_url = arguments.get('configuration', {}).get('configuration.marathonURL', 'http://localhost:8080')
-app_ids = list(arguments.get('instances', {}).keys())
+env_ids = list(arguments.get('instances', {}).keys())
 
 instance_results = {}
 
-for app in app_ids:
-    #command_id = list(arguments.get('instances', {}).get(app).get('commands').keys())[0]
-    marathon_comm.destroy(marathon_url, app)
+for envid in env_ids:
+    env = InstreamEnvironment(marathon_url)
+    env.load(envid)
+    env.destroy()
+
     instance_results[app] = {}
 
 

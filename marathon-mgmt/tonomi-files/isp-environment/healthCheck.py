@@ -42,13 +42,13 @@ for envid in env_ids:
             }
         }
         
-        zk = env.get_apps_by_type('zookeeper')[0]
-        redis = env.get_apps_by_type('redis')[0]
-
+        #zk = env.get_apps_by_type('zookeeper')[0]
+        #redis = env.get_apps_by_type('redis')[0]
+        ui = env.get_apps_by_type('web-ui')[0] if env.get_apps_by_type('web-ui') != [] else {}
         interfaces = {
-            'entrypoint': {
+            'application_entrypoint': {
                 'signals': {
-                    'URL': "http://nonexistent"
+                    'URL': ui.get_info().get('URL', 'N/A')
                     
                 }  
             }

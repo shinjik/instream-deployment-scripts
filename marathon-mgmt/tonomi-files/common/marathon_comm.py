@@ -138,3 +138,10 @@ def create(url, configuration):
 
         print("Error: " + str(res), file=sys.stderr)
         raise RuntimeError
+
+def update(url, app_id, app_definition):
+    res = make_request('PUT', url + "/v2/apps" + app_id, json.dumps(app_definition))
+    if res.get('message', None):
+
+        print("Error: " + str(res), file=sys.stderr)
+        raise RuntimeError

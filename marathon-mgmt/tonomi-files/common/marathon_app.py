@@ -1,9 +1,10 @@
 from urllib.parse import urlsplit
 import marathon_comm
 
-class MarathonApplication:
+class MarathonApplication(object):
     _model = {}
     _type = 'generic'
+    _dependencies = {}
 
     def __init__(self, marathon_url, model={}):
         self.marathon_url = marathon_url
@@ -24,6 +25,14 @@ class MarathonApplication:
     def environment_name(self, value):
         self._environment_name = value
     
+    def list_dependencies(self):
+        return self._dependencies.keys()
+
+    def set_dependency(self, name, value):
+        self._dependencies[name] = value
+
+    def get_dependency(self, name):
+        return self._dependencies.get(name, None)
 
     @property
     def type(self):
@@ -67,6 +76,21 @@ class MarathonApplication:
             if self._environment_name:
                 conf['configuration.labels'].update({'_tonomi_environment': self._environment_name})
             marathon_comm.create(self.marathon_url, conf)
+
+        self.load(self.id)
+
+    def update(self):
+        if not self._model:
+            raise RuntimeError
+        self._model.pop('uris', None)
+        self._model.pop('tasks', None)
+        self._model.pop('version', None)
+        marathon_comm.update(self.marathon_url, self.id, self._model)
+        self.load(self.id)
+
+    # Naive destroy, won't work with multi-container deployments
+    def destroy(self):
+        marathon_comm.destroy(self.marathon_url, self.id)
 
     # app-related logic goes here
 

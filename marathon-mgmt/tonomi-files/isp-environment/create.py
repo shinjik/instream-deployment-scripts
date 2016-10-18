@@ -4,27 +4,28 @@ import sys
 import yaml
 
 import marathon_comm
+from model import InstreamEnvironment
 
 
 arguments = yaml.safe_load(sys.stdin)
 
 marathon_url = arguments.get('configuration', {}).get('configuration.marathonURL', 'http://localhost:8080')
 
-app_ids = list(arguments.get('launch-instances', {}).keys())
+env_ids = list(arguments.get('launch-instances', {}).keys())
 
 instance_results = {}
 
-for app in app_ids:
+for env_id in env_ids:
     #command_id = list(arguments.get('instances', {}).get(app).get('commands').keys())[0]
-    configuration = arguments.get('launch-instances').get(app).get('configuration')
-    configuration['configuration.portMappings'] = [{'2181':'0'}]
-    configuration['configuration.imageId'] = 'wurstmeister/zookeeper'
-    configuration['configuration.labels'] = {'_tonomi_application': 'zookeeper'}
+    configuration = arguments.get('launch-instances').get(env_id).get('configuration')
     
-    marathon_comm.create(marathon_url, configuration)
+    e = InstreamEnvironment(marathon_url)
+    e.id = configuration['configuration.name']
+    e.create()
+
 
     instance_results[configuration['configuration.name']] = {
-        'instanceId': app,
+        'instanceId': env_id,
         '$set': {
             'status.flags.converging': True,
             'status.flags.active': False  

@@ -30,7 +30,7 @@ class KafkaApp(MarathonApplication):
         # we need to re-start app after initial launch because we need to catch real external port. 
         # alternatively it has to be set explicitly
         # TODO: support this
-        super(KafkaApp, self).create(self, configurations)
+        super(KafkaApp, self).create(configurations)
         self._model['env']['KAFKA_ADVERTISED_PORT'] = str(self.port_mappings['9092'])
         self.update()
 

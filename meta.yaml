@@ -6,6 +6,8 @@ kit:
       manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/mesos-cluster-component.yml
     - name: "Mesos/Marathon Manager"
       manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/mesos-marathon-manager-module.yml
+    - name: "Scripting Service"
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/scripting-service.yml
     - name: "In-stream environment on marathon"
       manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/instream-environment.yml
     - name: "In-stream environment on marathon Factory"

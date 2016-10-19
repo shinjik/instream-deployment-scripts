@@ -2,28 +2,28 @@
 
 import sys
 import yaml
-
-import marathon_comm
-from model import InstreamEnvironment
+from marathon import MarathonClient
 
 
-arguments = yaml.safe_load(sys.stdin)
-#yaml.safe_dump(arguments, sys.stderr)
-marathon_url = arguments.get('configuration', {}).get('configuration.marathonURL', 'http://localhost:8080')
-env_ids = list(arguments.get('instances', {}).keys())
+args = yaml.safe_load(sys.stdin)
+marathon_url = args.get('configuration', {}).get('configuration.marathonURL', '')
+marathon_client = MarathonClient(marathon_url)
 
 instance_results = {}
 
-for envid in env_ids:
-    env = InstreamEnvironment(marathon_url)
-    env.load(envid)
-    env.destroy()
+for env_id in args.get('instances', {}).keys():
+  for app in marathon_client.list_apps():
+    if ('_tonomi_environment', env_id) in app.labels.items():
+      try:
+        marathon_client.delete_app(app_id, True)
+      except:
+        pass
 
-    instance_results[app] = {}
+  try:
+    marathon_client.delete_group(env_id, True)
+  except:
+    pass
 
+  instance_results[env_id] = {}
 
-result = {
-    'instances': instance_results
-}
-
-yaml.safe_dump(result, sys.stdout)
+yaml.safe_dump({ 'instances': instance_results }, sys.stdout)

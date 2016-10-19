@@ -2,26 +2,23 @@
 
 import sys
 import yaml
+from marathon import MarathonClient
+from cassandra import *
 
-import marathon_comm
-
-
-
-arguments = yaml.safe_load(sys.stdin)
-#yaml.safe_dump(arguments, sys.stderr)
-marathon_url = arguments.get('configuration', {}).get('configuration.marathonURL', 'http://localhost:8080')
-app_ids = list(arguments.get('instances', {}).keys())
+args = yaml.safe_load(sys.stdin)
+marathon_url = args.get('configuration', {}).get('configuration.marathonURL')
+marathon_client = MarathonClient(marathon_url)
 
 instance_results = {}
 
-for app in app_ids:
-    #command_id = list(arguments.get('instances', {}).get(app).get('commands').keys())[0]
-    marathon_comm.destroy(marathon_url, app)
-    instance_results[app] = {}
+for tonomi_cluster_name in args.get('instances', {}).keys():
+  CassandraCluster.delete_cluster(tonomi_cluster_name, marathon_client)
 
+  instance_results[tonomi_cluster_name] = {
+    '$set': {
+      'status.flags.converging': False,
+      'status.flags.active': False
+    }
+  }
 
-result = {
-    'instances': instance_results
-}
-
-yaml.safe_dump(result, sys.stdout)
+yaml.safe_dump({'instances': instance_results}, sys.stdout)

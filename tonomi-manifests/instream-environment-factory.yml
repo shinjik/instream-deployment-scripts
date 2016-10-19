@@ -4,79 +4,72 @@ application:
             "*": bind(factory#component.*)
         isp-environments:
             env-by-id: bind(factory#factory.instances)
-
-
         configuration:
             "*": bind(factory#configuration.*)
-
     configuration:
         component.application: "In-stream environment on marathon"
         component.discoveryScript: /isp-environment/discover.py
         component.discoverySchedule: "0/30 * * * * ? *"
-
-
     components:
         factory:
             type: scripted.ComponentFactory
             interfaces:
                 configuration:
                     marathonURL: configuration(string)
-                isp-environments:
-                    env-by-id: consume-signal(map<string,string>)
-                redis:
-                    redis-by-id: consume-signal(map<string,string>)
                 zookeeper:
                     zookeeper-by-id: consume-signal(map<string,string>)
-                kafka:
-                   kafka-by-id: consume-signal(map<string,string>)
+                redis:
+                    redis-by-id:     consume-signal(map<string,string>)
                 cassandra:
-                   cassandra-by-id: consume-signal(map<string,string>)
-                spark:
-                   spark-by-id: consume-signal(map<string,string>)
+                    cassandra-by-id: consume-signal(map<string,string>)
+                kafka:
+                    kafka-by-id:     consume-signal(map<string,string>)
                 web-ui:
-                   web-ui-by-id: consume-signal(map<string,string>)
-
+                    web-ui-by-id:    consume-signal(map<string,string>)
+                spark:
+                    spark-by-id:     consume-signal(map<string,string>)
+                isp-environments:
+                    env-by-id:       consume-signal(map<string,string>)
         scripting:
             type: reference.Service
             interfaces:
                 scripting:
                     execute: receive-command(string script, object arguments => object results)
-        redis:
-            type: reference.Service
-            interfaces:
-                apps:
-                    redis-by-id: publish-signal(map<string,string>)
         zookeeper:
             type: reference.Service
             interfaces:
                 apps:
                     zookeeper-by-id: publish-signal(map<string,string>)
-        kafka:
+        redis:
             type: reference.Service
             interfaces:
                 apps:
-                    kafka-by-id: publish-signal(map<string,string>)
+                    redis-by-id: publish-signal(map<string,string>)
         cassandra:
             type: reference.Service
             interfaces:
                 apps:
                     cassandra-by-id: publish-signal(map<string,string>)
-        spark:
+        kafka:
             type: reference.Service
             interfaces:
                 apps:
-                    spark-by-id: publish-signal(map<string,string>)
+                    kafka-by-id: publish-signal(map<string,string>)
         web-ui:
             type: reference.Service
             interfaces:
                 apps:
                     web-ui-by-id: publish-signal(map<string,string>)
-
+        spark:
+            type: reference.Service
+            interfaces:
+                apps:
+                    spark-by-id: publish-signal(map<string,string>)
     bindings:
-        - [factory, redis]
         - [factory, zookeeper]
-        - [factory, kafka]
+        - [factory, redis]
         - [factory, cassandra]
-        - [factory, spark]
+        - [factory, kafka]
         - [factory, web-ui]
+        - [factory, spark]
         - [factory, scripting]

@@ -1105,6 +1105,7 @@ application:
                             unzip playbooks.zip &&
                             mv $${{folder}}-$${{branch}}/ansible-playbook ansible-playbook &&
                             rm -rf $${{folder}}-$${{branch}}
+                            ansible-galaxy install -r ansible-playbook/install_roles.yml
 
           .run-ansible:
               steps:

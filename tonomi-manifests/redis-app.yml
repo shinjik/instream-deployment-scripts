@@ -1,4 +1,6 @@
 application:
+    configuration:
+        configuration.name: "sandbox"
     interfaces:
         configuration:
             "*": bind(application#configuration.*)
@@ -13,33 +15,26 @@ application:
             type: scripted.Component 
             configuration:
                 factory.name: Redis on marathon Factory
-                factory.launchScript: /redis/create.py
-                factory.destroyScript: /redis/destroy.py
-                factory.healthCheckScript: /redis/healthCheck.py
-                factory.reconfigurationScript: /redis/reconfigure.py
+                factory.launchScript:           /redis/create.py
+                factory.destroyScript:          /redis/destroy.py
+                factory.healthCheckScript:      /redis/healthCheck.py
+                factory.reconfigurationScript:  /redis/reconfigure.py
                 factory.commandScripts:
-                    control.restart: /redis/restart.py
-                    control.scale: /redis/scale.py
+                    control.restart:            /redis/restart.py
+                    control.scale:              /redis/scale.py
             interfaces:
                 configuration:
-                    cpu: configuration(string)
-                    ram: configuration(int)
-                    disk: configuration(int)
-                    instances: configuration(int)
-                    #imageId: configuration(string)
-                    #portMappings: configuration(list<map<string, string>>)
-                    #cmd: configuration(string)
-                    name: configuration(string)
+                    name:
+                      type: configuration(string)
+                      name: Environment name
                 redis:
-                    lbPort: publish-signal(string)
-                    #localPorts: publish-signal(list(string))
+                    master-hosts: publish-signal(list<string>)
+                    slave-hosts:  publish-signal(list<string>)
                 compute:
-                    ram: publish-signal(string)
-                    cpu: publish-signal(string)
-                    disk: publish-signal(string)
-                    instances: publish-signal(string)
-                    #portMappings: publish-signal(map<string, string>)
-
+                    ram:        publish-signal(string)
+                    cpu:        publish-signal(string)
+                    disk:       publish-signal(string)
+                    instances:  publish-signal(string)
                 control:
-                    restart: receive-command()
-                    scale: receive-command(int instances)
+                    restart:    receive-command()
+                    scale:      receive-command(int instances)

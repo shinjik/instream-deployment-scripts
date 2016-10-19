@@ -3,171 +3,96 @@
 import sys
 import yaml
 import datetime
-import requests
-
-
-
 from collections import defaultdict
 from yaml.representer import SafeRepresenter
+from marathon import MarathonClient
+
 
 # to serialize defaultdicts normally
 SafeRepresenter.add_representer(defaultdict, SafeRepresenter.represent_dict)
-
-arguments = yaml.safe_load(sys.stdin)
-
-app_ids = list(arguments.get('instances', {}).keys())
-marathon_url = arguments.get('configuration', {}).get('configuration.marathonURL', 'http://localhost:8080')
-
-
 def multidict():
-    return defaultdict(multidict)
-
-def get_json(url):
-    r = requests.get(url)
-    return r.json()
-
-def post_json(url, data=None):
-    r = requests.post(url, data)
-    return r.json()
-
-def make_request(method, url, data=None):
-    if data:
-        r = requests.request(method, url, data=data)
-    else:
-        r = requests.request(method, url)
-    if r.json():
-        return r.json()
-    else:
-        raise RuntimeError
-
-def info(url, id, debug):
-    res = None
-    try:
-        res = make_request('GET', url + "/v2/apps" + id)
-        a = res['app']
-        return a
-    except Exception:
-        return None
+  return defaultdict(multidict)
 
 
-app_infos = {}
-for appid in app_ids:
-    app = info(marathon_url, appid, False)
-    if app:
-        status = {
-            'flags': {
-                'active': True,
-                'converging': False,
-                'failed': app['tasksUnhealthy'] > 0 #bool(vm.model.get('failure'))
-            }
+args = yaml.safe_load(sys.stdin)
+
+marathon_url = args.get('configuration', {}).get('configuration.marathonURL', '')
+
+marathon_client = MarathonClient(marathon_url)
+
+app_statuses = {}
+
+for tonomi_instance_name in args.get('instances', {}).keys():
+  try:
+    app = marathon_client.get_app(tonomi_instance_name)
+    if '_tonomi_environment' not in app.labels or '_tonomi_application' not in app.labels:
+      raise Exception
+
+    status = {
+      'flags': {
+        'active': True,
+        'converging': False,
+        'failed': app.tasks_unhealthy > 0
+      }
+    }
+
+    tasks = []
+    for task in app.tasks:
+      t = {
+        'taskId': task.id,
+        'host': task.host,
+        'state': task.state
+      }
+      # if app.container.docker:
+      #   t['portMappings'] = { str(p.container_port): str(task.ports) for p in app.container.docker.port_mappings }
+      # else:
+      #   t['ports'] = task.ports
+      tasks.append(t)
+
+    port_mappings = { str(p.container_port): str(p.service_port) for p in app.container.docker.port_mappings }
+    interfaces = {
+      'info': {
+        'signals': {
+          'app-id': app.id,
+          'ram': app.mem,
+          'cpu': app.cpus,
+          'num_instances': app.instances
         }
-        #if 'failure' in vm.model:
-        #    status['message'] = vm.model['failure']
-        tasks = []
-        for task in app['tasks']:
-            
-            t = {
-                    'taskId': task['id'],
-                    'host': task['host'],
-                    #'ports': str(task['ports']),
-
-                    'state': task['state']
-                    
-
-
-
-                }
-            if app['container'].get('docker', None):
-                t['portMappings'] = { str(p['containerPort']): str(task['ports'][i]) for i,p in enumerate(app['container']['docker']['portMappings'])}
-            else:
-                t['ports'] = task['ports']
-            tasks.append(t)
-        port_mappings = {str(p['containerPort']): str(p['servicePort']) for p in app['container']['docker']['portMappings']}
-        interfaces = {
-            'info': {
-                'signals': {
-                    'app-id': app['id'],
-                    'ram': app['mem'],
-                    'cpu': app['cpus'],
-                    'num_instances': app['instances']
-                }
-            },
-            'compute': {
-                'signals': {
-                    'ram': app['mem'],
-                    'cpu': app['cpus'],
-                    'instances': app['instances'],
-                    'portMappings': port_mappings
-                }
-            },
-            'instances': {
-                'signals':  {
-                    'tasks': tasks
-                }
-            }
+      },
+      'compute': {
+        'signals': {
+          'ram': app.mem,
+          'cpu': app.cpus,
+          'instances': app.instances,
+          'portMappings': port_mappings
         }
-
-        # if 'address' in vm.model:
-        #     interfaces['info']['signals']['address'] = vm.model['address']
-
-        # if 'login' in vm.model:
-        #     interfaces['info']['signals']['login'] = vm.model['login']
-
-        components = multidict()
-        # if 'volumes' in vm.model:
-        #     for volid in vm.model['volumes']:
-        #         vol = fvol.load(volid)
-        #         color = vol.color if vol else 'unknown'
-        #         components[color]['components'][volid] = {
-        #             'reference': {
-        #                 'mapping': 'volumes.volume-by-id',
-        #                 'key': volid
-        #             }
-        #         }
-        
-        app_infos[appid] = {
-            'instanceId': app['id'],
-            'name': app['id'],
-            'status': status,
-            'interfaces': interfaces,
-            'components': components,
+      },
+      'instances': {
+        'signals': {
+          'tasks': tasks
         }
+      }
+    }
 
-        # entries = []
-        # if 'tasks' in vm.model:
-        #     remaining_tasks = []
-        #     for task in vm.model['tasks']:
-        #         if task['timestamp'] <= datetime.datetime.utcnow().timestamp():
-        #             entries.append({
-        #                 'severity': 'INFO',
-        #                 'message': "Task '{}' executed".format(task['task'])
-        #             })
-        #         else:
-        #             remaining_tasks.append(task)
-        #     if remaining_tasks:
-        #         vm.model['tasks'] = remaining_tasks
-        #     else:
-        #         del vm.model['tasks']
-        #     fvm.save(vm)
+    components = multidict()
 
-        # if entries:
-        #     vm_infos[vmid]['$pushAll'] = {
-        #         'activityLog': entries
-        #     }
+    app_statuses[tonomi_instance_name] = {
+      'instanceId': tonomi_instance_name,
+      'name': tonomi_instance_name,
+      'status': status,
+      'interfaces': interfaces,
+      'components': components,
+    }
 
-    else:
-        # a vm is absent, set its status to destroyed
-        app_infos[appid] = {
-            'status': {
-                'flags': {
-                    'active': False,
-                    'converging': False,
-                    'failed': False
-                }
-            }
+  except:
+    app_statuses[tonomi_instance_name] = {
+      'status': {
+        'flags': {
+          'active': False,
+          'converging': False,
+          'failed': False
         }
+      }
+    }
 
-result = {
-    'instances': app_infos
-}
-yaml.safe_dump(result, sys.stdout)
+yaml.safe_dump({ 'instances': app_statuses }, sys.stdout)

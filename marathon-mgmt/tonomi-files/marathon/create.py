@@ -4,98 +4,61 @@ import sys
 import json
 import requests
 import yaml
+from marathon import MarathonClient
+from marathon.models import MarathonApp
+from marathon.models.container import *
 
 
-def get_json(url):
-    r = requests.get(url)
-    return r.json()
+args = yaml.safe_load(sys.stdin)
+marathon_url = args.get('configuration', {}).get('configuration.marathonURL')
 
-def post_json(url, data=None):
-    r = requests.post(url, data)
-    return r.json()
-
-def make_request(method, url, data=None):
-    if data:
-        r = requests.request(method, url, data=data)
-    else:
-        r = requests.request(method, url)
-    if r.json():
-        return r.json()
-    else:
-        raise RuntimeError
-
-def list_apps(url):
-    res = get_json(url + "/v2/apps")
-    return res.get('apps', [])
-
-
-arguments = yaml.safe_load(sys.stdin)
-#yaml.safe_dump(arguments, sys.stderr)
-marathon_url = arguments.get('configuration', {}).get('configuration.marathonURL', 'http://localhost:8080')
-app_ids = list(arguments.get('launch-instances', {}).keys())
+marathon_client = MarathonClient(marathon_url)
 
 instance_results = {}
 
-for app in app_ids:
-    #command_id = list(arguments.get('instances', {}).get(app).get('commands').keys())[0]
-    configuration = arguments.get('launch-instances').get(app).get('configuration')
+for tonomi_instance_id, app in args.get('launch-instances', {}).items():
+  configuration = app.get('configuration')
+  tonomi_instance_name = configuration['configuration.name']
+  tonomi_env_name = 'sandbox'
+  try:
+    tonomi_env_name = tonomi_instance_name.split('/')[1]
+  except:
+    tonomi_instance_name = '/{}/{}'.format(tonomi_env_name, tonomi_instance_name)
 
-    portMappings = []
-    for p in configuration['configuration.portMappings']:
-        portMappings.append(
-            {
-                "containerPort": int(list(p.keys())[0]),
-                "hostPort": 0,
-                "servicePort": int(p[list(p.keys())[0]]),
-                "protocol": "tcp"
-            
-            })
-        
-    app_definition = {
-        "id": configuration['configuration.name'],
-        "cpus": float(configuration['configuration.cpu']),
-        "mem": configuration['configuration.ram'],
-        "disk": configuration['configuration.disk'],
-        
-        "instances": configuration['configuration.instances'],
-        "container": {
-            "type": "DOCKER",
-            "docker": {
-                "image": configuration['configuration.imageId'],
-                "network": "BRIDGE",
-                "portMappings": portMappings
-                
-            }
-        }
+  port_mappings = []
+  for p in configuration['configuration.portMappings']:
+    port_mappings.append({
+      MarathonContainerPortMapping(name=None, container_port=int(list(p.keys())[0]), host_port=0,
+                                   service_port=int(p[list(p.keys())[0]]), protocol='tcp', labels={})
+    })
+
+  cmd = configuration['configuration.cmd']
+  cpus = float(configuration['configuration.cpu'])
+  mem = int(configuration['configuration.ram'])
+  disk = int(configuration['configuration.disk'])
+  instances = int(configuration['configuration.instances'])
+  image = configuration['configuration.imageId']
+
+  docker = MarathonDockerContainer(image=image, network='BRIDGE', port_mappings=port_mappings,
+                                   parameters=[], privileged=False, force_pull_image=False)
+  container = MarathonContainer(docker=docker)
+
+  labels = {
+    '_tonomi_marathon_instance_id': tonomi_instance_id,
+    '_tonomi_environment': tonomi_env_name
+  }
+
+  new_marathon_app = MarathonApp(id=tonomi_instance_name, cmd=cmd, cpus=cpus, mem=mem, instances=instances, disk=disk,
+                                 labels=labels, container=container)
+
+  marathon_client.create_app(tonomi_instance_name, new_marathon_app)
+
+  instance_results[tonomi_instance_name] = {
+    'instanceId': tonomi_instance_id,
+    '$set': {
+      'status.flags.converging': True,
+      'status.flags.active': False
     }
-    res = make_request('POST', marathon_url + "/v2/apps", json.dumps(app_definition))
-    if res.get('message', None):
+  }
 
-        print("Error: " + str(res), file=sys.stderr)
-        sys.exit(1)
-    #res =  make_request('DELETE', marathon_url + "/v2/apps" + app)
-    instance_results[configuration['configuration.name']] = {
-        'instanceId': app,
-
-        # '$pushAll': {
-        #     'commands.'+command_id: [
-        #         {'$intermediate': True}, { 'status.flags.converging': True }
-        #         #{'signals.status.flags.converging': True, 'status.flags.active': False, 'instances.status.flags.active': False, 'instances.status.flags.converging': True, 'signals.instances.tasks'
-        #         ]
-        #     },
-        '$set': {
-            'status.flags.converging': True,
-            'status.flags.active': False  
-           }
-    }
-
-
-#sys.exit(1)
-
-
-
-result = {
-    'instances': instance_results
-}
-
-yaml.safe_dump(result, sys.stdout)
+yaml.safe_dump({'instances': instance_results}, sys.stdout)

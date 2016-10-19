@@ -1,0 +1,23 @@
+- src: https://github.com/AnsibleShipyard/ansible-marathon
+  version: master
+  name: ansible-marathon
+
+- src: https://github.com/AnsibleShipyard/ansible-java
+  version: master
+  name: ansible-java
+
+- src: https://github.com/AnsibleShipyard/ansible-zookeeper
+  version: master
+  name: ansible-zookeeper
+
+- src: https://github.com/AnsibleShipyard/ansible-docker
+  version: master
+  name: ansible-docker
+
+- src: https://github.com/geerlingguy/ansible-role-haproxy
+  version: master
+  name: ansible-haproxy
+
+- src: https://github.com/AnsibleShipyard/ansible-mesos.git
+  version: master
+  name: ansible-mesos

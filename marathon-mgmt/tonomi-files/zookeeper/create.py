@@ -2,38 +2,33 @@
 
 import sys
 import yaml
+from marathon import MarathonClient
+from marathon.models import MarathonApp, MarathonConstraint
+from marathon.models.container import *
+from marathon.models.app import PortDefinition, Residency
+from zookeeper import *
 
-import marathon_comm
-
-
-arguments = yaml.safe_load(sys.stdin)
-
-marathon_url = arguments.get('configuration', {}).get('configuration.marathonURL', 'http://localhost:8080')
-
-app_ids = list(arguments.get('launch-instances', {}).keys())
+args = yaml.safe_load(sys.stdin)
+marathon_url = args.get('configuration', {}).get('configuration.marathonURL')
+marathon_client = MarathonClient(marathon_url)
 
 instance_results = {}
 
-for app in app_ids:
-    #command_id = list(arguments.get('instances', {}).get(app).get('commands').keys())[0]
-    configuration = arguments.get('launch-instances').get(app).get('configuration')
-    configuration['configuration.portMappings'] = [{'2181':'0'}]
-    configuration['configuration.imageId'] = 'wurstmeister/zookeeper'
-    configuration['configuration.labels'] = {'_tonomi_application': 'zookeeper'}
-    
-    marathon_comm.create(marathon_url, configuration)
+for tonomi_cluster_id, app in args.get('launch-instances', {}).items():
+  configuration = app.get('configuration')
+  env_name = configuration.get('configuration.name')
+  tonomi_cluster_name = '/{}/zookeeper'.format(env_name)
 
-    instance_results[configuration['configuration.name']] = {
-        'instanceId': app,
-        '$set': {
-            'status.flags.converging': True,
-            'status.flags.active': False  
-           }
+  zookeeper_cluster = ZookeeperCluster(env_name, marathon_client)
+  zookeeper_cluster.create()
+
+  instance_results[tonomi_cluster_name] = {
+    'instanceId': tonomi_cluster_id,
+    'name': tonomi_cluster_name,
+    '$set': {
+      'status.flags.converging': True,
+      'status.flags.active': False
     }
+  }
 
-
-result = {
-    'instances': instance_results
-}
-
-yaml.safe_dump(result, sys.stdout)
+yaml.safe_dump({ 'instances': instance_results }, sys.stdout)

@@ -2,66 +2,34 @@
 
 import sys
 import yaml
+from marathon import MarathonClient
+from marathon.models import MarathonApp, MarathonConstraint
+from marathon.models.container import *
+from marathon.models.app import PortDefinition, Residency
+from cassandra import *
 
-import marathon_comm
 
-
-arguments = yaml.safe_load(sys.stdin)
-
-marathon_url = arguments.get('configuration', {}).get('configuration.marathonURL', 'http://localhost:8080')
-
-app_ids = list(arguments.get('launch-instances', {}).keys())
+args = yaml.safe_load(sys.stdin)
+marathon_url = args.get('configuration', {}).get('configuration.marathonURL')
+marathon_client = MarathonClient(marathon_url)
 
 instance_results = {}
 
-for app in app_ids:
-    #command_id = list(arguments.get('instances', {}).get(app).get('commands').keys())[0]
-    configuration = arguments.get('launch-instances').get(app).get('configuration')
-    configuration['configuration.instances'] = 1
-    #configuration['configuration.disk'] = 0
-    configuration['configuration.portMappings'] = [{'9042':'0'}, {'9160':'0'}]
-    configuration['configuration.imageId'] = 'poklet/cassandra'
-    configuration['configuration.labels'] = {'_tonomi_application': 'cassandra'}
-    configuration['configuration.constraints'] = [["hostname", "UNIQUE"]]
-    configuration['configuration.cmd'] = "chown -R cassandra /var/lib/cassandra && start"
-    volume_size = 2048
-    if configuration.get('configuration.volumeSize', None):
-        volume_size = configuration['configuration.volumeSize'] 
-    volume_name = 'vol' + configuration['configuration.name'].replace('/', '-') + '-data'
-    if volume_size > 0:
-        configuration['volumes'] =  [
-          {
-            "containerPath": volume_name,
-            "mode": "RW",
-            "persistent": {
-              "type": "root",
-              "size": volume_size
-            }
-          },
-          {
-            "containerPath": "/var/lib/cassandra",
-            "hostPath": volume_name,
-            "mode": "RW"
-          }
-        ]
+for tonomi_cluster_id, app in args.get('launch-instances', {}).items():
+  configuration = app.get('configuration')
+  env_name = configuration.get('configuration.name')
+  tonomi_cluster_name = '/{}/cassandra'.format(env_name)
 
-        configuration['residency'] = {
-            "taskLostBehavior": "WAIT_FOREVER"
-        }
+  cassandra_cluster = CassandraCluster(env_name, marathon_client)
+  cassandra_cluster.create()
 
-    marathon_comm.create(marathon_url, configuration)
-
-    instance_results[configuration['configuration.name']] = {
-        'instanceId': app,
-        '$set': {
-            'status.flags.converging': True,
-            'status.flags.active': False  
-           }
+  instance_results[tonomi_cluster_name] = {
+    'instanceId': tonomi_cluster_id,
+    'name': tonomi_cluster_name,
+    '$set': {
+      'status.flags.converging': True,
+      'status.flags.active': False
     }
+  }
 
-
-result = {
-    'instances': instance_results
-}
-
-yaml.safe_dump(result, sys.stdout)
+yaml.safe_dump({ 'instances': instance_results }, sys.stdout)

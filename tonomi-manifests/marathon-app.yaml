@@ -1,4 +1,13 @@
 application:
+    configuration:
+        configuration.name: "sandbox"
+        configuration.cpu: "0.5"
+        configuration.ram: 256
+        configuration.disk: 256
+        configuration.instances: 1
+        configuration.imageId: ""
+        configuration.portMappings: []
+        configuration.cmd: ""
     interfaces:
         configuration:
             "*": bind(application#configuration.*)
@@ -13,30 +22,46 @@ application:
             type: scripted.Component 
             configuration:
                 factory.name: Marathon Application Factory
-                factory.launchScript: /marathon/create.py
-                factory.destroyScript: /marathon/destroy.py
-                factory.healthCheckScript: /marathon/healthCheck.py
-                factory.reconfigurationScript: /marathon/reconfigure.py
+                factory.launchScript:           /marathon/create.py
+                factory.destroyScript:          /marathon/destroy.py
+                factory.healthCheckScript:      /marathon/healthCheck.py
+                factory.reconfigurationScript:  /marathon/reconfigure.py
                 factory.commandScripts:
-                    control.restart: /marathon/restart.py
-                    control.scale: /marathon/scale.py
+                    control.restart:            /marathon/restart.py
+                    control.scale:              /marathon/scale.py
             interfaces:
                 configuration:
-                    cpu: configuration(string)
-                    ram: configuration(int)
-                    disk: configuration(int)
-                    instances: configuration(int)
-                    imageId: configuration(string)
-                    portMappings: configuration(list<map<string, string>>)
-                    cmd: configuration(string)
-                    name: configuration(string)
+                    cpu:
+                      type: configuration(string)
+                      name: CPU
+                    ram:
+                      type: configuration(int)
+                      name: RAM
+                    disk:
+                      type: configuration(int)
+                      name: Disk
+                    instances:
+                      type: configuration(int)
+                      name: Instances
+                    imageId:
+                      type: configuration(string)
+                      name: Docker image
+                    portMappings:
+                      type: configuration(list<map<string, string>>)
+                      name: Port mappings
+                    cmd:
+                      type: configuration(string)
+                      name: Command
+                    name:
+                      type: configuration(string)
+                      name: Name
                 compute:
-                    ram: publish-signal(string)
-                    cpu: publish-signal(string)
-                    instances: publish-signal(string)
+                    ram:          publish-signal(string)
+                    cpu:          publish-signal(string)
+                    instances:    publish-signal(string)
                     portMappings: publish-signal(map<string, string>)
                 instances: 
-                    tasks: publish-signal(list<map<string, object>>) #map<string, string>
+                    tasks:        publish-signal(list<map<string, object>>)
                 control:
-                    restart: receive-command()
-                    scale: receive-command(int instances)
+                    restart:      receive-command()
+                    scale:        receive-command(int instances)

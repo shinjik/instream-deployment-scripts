@@ -1,4 +1,6 @@
 application:
+    configuration:
+        configuration.name: "sandbox"
     interfaces:
         configuration:
             "*": bind(application#configuration.*)
@@ -13,33 +15,26 @@ application:
             type: scripted.Component 
             configuration:
                 factory.name: Kafka on marathon Factory
-                factory.launchScript: /kafka/create.py
-                factory.destroyScript: /kafka/destroy.py
-                factory.healthCheckScript: /kafka/healthCheck.py
-                factory.reconfigurationScript: /kafka/reconfigure.py
+                factory.launchScript:           /kafka/create.py
+                factory.destroyScript:          /kafka/destroy.py
+                factory.healthCheckScript:      /kafka/healthCheck.py
+                factory.reconfigurationScript:  /kafka/reconfigure.py
                 factory.commandScripts:
-                    control.restart: /kafka/restart.py
-                    control.scale: /kafka/scale.py
+                    control.restart:            /kafka/restart.py
+                    control.scale:              /kafka/scale.py
             interfaces:
                 configuration:
-                    cpu: configuration(string)
-                    ram: configuration(int)
-                    disk: configuration(int)
-                    instances: configuration(int)
-                    #imageId: configuration(string)
-                    #portMappings: configuration(list<map<string, string>>)
-                    #cmd: configuration(string)
-                    name: configuration(string)
+                    name:
+                      type: configuration(string)
+                      name: Environment name
                 kafka:
-                    lbPort: publish-signal(string)
-                    #localPorts: publish-signal(list(string))
+                    kafka-hosts: publish-signal(list<string>)
+                    kafka-port:  publish-signal(string)
                 compute:
-                    ram: publish-signal(string)
-                    cpu: publish-signal(string)
-                    disk: publish-signal(string)
-                    instances: publish-signal(string)
-                    #portMappings: publish-signal(map<string, string>)
-
+                    ram:        publish-signal(string)
+                    cpu:        publish-signal(string)
+                    disk:       publish-signal(string)
+                    instances:  publish-signal(string)
                 control:
-                    restart: receive-command()
-                    scale: receive-command(int instances)
+                    restart:    receive-command()
+                    scale:      receive-command(int instances)

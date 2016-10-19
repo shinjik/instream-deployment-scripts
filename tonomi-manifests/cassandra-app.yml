@@ -1,4 +1,6 @@
 application:
+    configuration:
+        configuration.name: "sandbox"
     interfaces:
         configuration:
             "*": bind(application#configuration.*)
@@ -13,35 +15,30 @@ application:
             type: scripted.Component 
             configuration:
                 factory.name: Cassandra on marathon Factory
-                factory.launchScript: /cassandra/create.py
-                factory.destroyScript: /cassandra/destroy.py
-                factory.healthCheckScript: /cassandra/healthCheck.py
-                factory.reconfigurationScript: /cassandra/reconfigure.py
+                factory.launchScript:           /cassandra/create.py
+                factory.destroyScript:          /cassandra/destroy.py
+                factory.healthCheckScript:      /cassandra/healthCheck.py
+                factory.reconfigurationScript:  /cassandra/reconfigure.py
                 factory.commandScripts:
-                    control.restart: /cassandra/restart.py
-                    control.scale: /cassandra/scale.py
+                    control.restart:            /cassandra/restart.py
+                    control.scale:              /cassandra/scale.py
             interfaces:
                 configuration:
-                    cpu: configuration(string)
-                    ram: configuration(int)
-                    #disk: configuration(int)
-                    #instances: configuration(int)
-                    #imageId: configuration(string)
-                    #portMappings: configuration(list<map<string, string>>)
-                    #cmd: configuration(string)
-                    name: configuration(string)
-                    volumeSize: configuration(int)
+                    name:
+                      type: configuration(string)
+                      name: Environment name
                 cassandra:
-                    nativePort: publish-signal(string)
-                    thriftPort: publish-signal(string)
-                    #localPorts: publish-signal(list(string))
+                    seed-hosts: publish-signal(list<string>)
+                    node-hosts: publish-signal(list<string>)
+                    jmx-port:                       publish-signal(string) # 7199 - JMX (was 8080 pre Cassandra 0.8.xx)
+                    internode-communication-port:   publish-signal(string) # 7000 - Internode communication (not used if TLS enabled)
+                    tls-internode-commucation-port: publish-signal(string) # 7001 - TLS Internode communication (used if TLS enabled)
+                    thrift-client-port:             publish-signal(string) # 9160 - Thrift client API
+                    cql-native-port:                publish-signal(string) # 9042 - CQL native transport port
                 compute:
-                    ram: publish-signal(string)
-                    cpu: publish-signal(string)
-                    disk: publish-signal(string)
-                    #instances: publish-signal(string)
-                    #portMappings: publish-signal(map<string, string>)
-
+                    ram:     publish-signal(string)
+                    cpu:     publish-signal(string)
+                    disk:    publish-signal(string)
                 control:
                     restart: receive-command()
-                    scale: receive-command(int instances)
+                    scale:   receive-command(int instances)

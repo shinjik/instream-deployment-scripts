@@ -2,120 +2,76 @@
 
 import sys
 import yaml
-
-import marathon_comm
-
-
-
 from collections import defaultdict
 from yaml.representer import SafeRepresenter
+from marathon import MarathonClient
 
 # to serialize defaultdicts normally
 SafeRepresenter.add_representer(defaultdict, SafeRepresenter.represent_dict)
 
-arguments = yaml.safe_load(sys.stdin)
-
-app_ids = list(arguments.get('instances', {}).keys())
-marathon_url = arguments.get('configuration', {}).get('configuration.marathonURL', 'http://localhost:8080')
-
 def multidict():
-    return defaultdict(multidict)
+  return defaultdict(multidict)
 
+args = yaml.safe_load(sys.stdin)
+marathon_url = args.get('configuration', {}).get('configuration.marathonURL')
+marathon_client = MarathonClient(marathon_url)
 
-app_infos = {}
-for appid in app_ids:
-    app = marathon_comm.info(marathon_url, appid)
-    if app:
-        status = {
-            'flags': {
-                'active': True,
-                'converging': False,
-                'failed': app.marathon_model['tasksUnhealthy'] > 0 #bool(vm.model.get('failure'))
-            }
+app_statuses = {}
+
+for tonomi_cluster_instance_name in args.get('instances', {}).keys():
+
+  try:
+    app = marathon_client.get_app(tonomi_cluster_instance_name)
+
+    status = {
+      'flags': {
+        'active': True,
+        'converging': False,
+        'failed': app.tasks_unhealthy > 0
+      }
+    }
+
+    interfaces = {
+      'compute': {
+        'signals': {
+          'ram': app.mem * app.tasks_running,
+          'cpu': app.cpus * app.tasks_running,
+          'disk': app.disk * app.tasks_running,
+          'instances': app.tasks_running
         }
-        
-        
-        port_mappings = {str(p['containerPort']): str(p['servicePort']) for p in app.marathon_model['container']['docker']['portMappings']}
-        interfaces = {
-            
-            'compute': {
-                'signals': {
-                    'ram': app.marathon_model['mem'],
-                    'cpu': app.marathon_model['cpus'],
-                    'disk': app.marathon_model['disk'],
-                    'instances': app.marathon_model['instances'],
-                    #'portMappings': port_mappings
-                }
-            },
-            
-            'kafka': {
-                'signals': {
-                    'lbPort': str(port_mappings['9092'])
-                }
-            }
+      },
+      'kafka': {
+        'signals': {
+          'kafka-hosts': [task.host for task in app.tasks],
+          'kafka-port': app.env['KAFKA_PORT']
         }
+      }
+    }
 
-        components = multidict()
-        components['kafka-broker'] = {
-            'reference': {
-                'mapping': 'apps.app-by-id',
-                'key': app.id
-            }
+    components = multidict()
+    components['kafka-broker'] = {
+      'reference': {
+        'mapping': 'apps.app-by-id',
+        'key': app.id
+      }
+    }
+
+    app_statuses[tonomi_cluster_instance_name] = {
+      'instanceId': tonomi_cluster_instance_name,
+      'name': tonomi_cluster_instance_name,
+      'status': status,
+      'interfaces': interfaces,
+      'components': components,
+    }
+  except:
+    app_statuses[tonomi_cluster_instance_name] = {
+      'status': {
+        'flags': {
+          'active': False,
+          'converging': False,
+          'failed': False
         }
-        # if 'volumes' in vm.model:
-        #     for volid in vm.model['volumes']:
-        #         vol = fvol.load(volid)
-        #         color = vol.color if vol else 'unknown'
-        #         components[color]['components'][volid] = {
-        #             'reference': {
-        #                 'mapping': 'volumes.volume-by-id',
-        #                 'key': volid
-        #             }
-        #         }
-        
-        app_infos[appid] = {
-            'instanceId': app.id,
-            'name': app.id,
-            'status': status,
-            'interfaces': interfaces,
-            'components': components,
-        }
+      }
+    }
 
-        # entries = []
-        # if 'tasks' in vm.model:
-        #     remaining_tasks = []
-        #     for task in vm.model['tasks']:
-        #         if task['timestamp'] <= datetime.datetime.utcnow().timestamp():
-        #             entries.append({
-        #                 'severity': 'INFO',
-        #                 'message': "Task '{}' executed".format(task['task'])
-        #             })
-        #         else:
-        #             remaining_tasks.append(task)
-        #     if remaining_tasks:
-        #         vm.model['tasks'] = remaining_tasks
-        #     else:
-        #         del vm.model['tasks']
-        #     fvm.save(vm)
-
-        # if entries:
-        #     vm_infos[vmid]['$pushAll'] = {
-        #         'activityLog': entries
-        #     }
-
-    else:
-        # a vm is absent, set its status to destroyed
-        app_infos[appid] = {
-            'status': {
-                'flags': {
-                    'active': False,
-                    'converging': False,
-                    'failed': False
-                }
-            }
-        }
-
-result = {
-    'instances': app_infos
-}
-yaml.safe_dump(result, sys.stdout)
+yaml.safe_dump({'instances': app_statuses}, sys.stdout)

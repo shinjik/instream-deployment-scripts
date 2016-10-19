@@ -2,37 +2,37 @@
 
 import sys
 import yaml
+from marathon import MarathonClient
 
-import marathon_comm
+args = yaml.safe_load(sys.stdin)
+marathon_url = args.get('configuration', {}).get('configuration.marathonURL')
 
+marathon_client = MarathonClient(marathon_url)
 
-arguments = yaml.safe_load(sys.stdin)
+result = {'instances': {}}
 
-marathon_url = arguments.get('configuration', {}).get('configuration.marathonURL', 'http://localhost:8080')
+envs = []
 
-apps = marathon_comm.list_apps(marathon_url, {})
-env_ids = []
-for app in apps:
-    eid = app.marathon_model.get('labels',{}).get('_tonomi_environment')
-    if eid and eid not in env_ids:
-        env_ids.append(eid)
+for group in marathon_client.list_groups():
+  if len(group.apps) == 0:
+    marathon_client.delete_group(group.id)
 
-def get_tonomi_model(eid):
-    if eid:
-        return {
-            'name': eid,
-            'interfaces': {
-                'info': {
-                    'signals': {
-                        'app-id': eid
-                    }
-                }
-            }
+for app in marathon_client.list_apps():
+  for label, value in app.labels.items():
+    if label == '_tonomi_environment':
+      if value and value not in envs:
+        envs.append(value)
+
+for env_name in envs:
+  result['instances'][env_name] = {
+    'name': env_name,
+    'interfaces': {
+      'info': {
+        'signals': {
+          'app-id': env_name
         }
-    else:
-        return {}
+      }
+    }
+  }
 
-result = {
-    'instances': { eid: get_tonomi_model(eid) for eid in env_ids }
-}
 yaml.safe_dump(result, sys.stdout)

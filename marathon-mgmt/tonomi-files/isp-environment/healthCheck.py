@@ -2,94 +2,122 @@
 
 import sys
 import yaml
-
-import marathon_comm
-from model import InstreamEnvironment
-
-
-
 from collections import defaultdict
 from yaml.representer import SafeRepresenter
+from marathon import MarathonClient
 
 # to serialize defaultdicts normally
 SafeRepresenter.add_representer(defaultdict, SafeRepresenter.represent_dict)
 
-arguments = yaml.safe_load(sys.stdin)
-
-env_ids = list(arguments.get('instances', {}).keys())
-marathon_url = arguments.get('configuration', {}).get('configuration.marathonURL', 'http://localhost:8080')
 
 def multidict():
-    return defaultdict(multidict)
+  return defaultdict(multidict)
 
 
-env_infos = {}
-for envid in env_ids:
-    env = InstreamEnvironment(marathon_url)
-    env.load(envid)
+args = yaml.safe_load(sys.stdin)
+marathon_url = args.get('configuration', {}).get('configuration.marathonURL')
+marathon_client = MarathonClient(marathon_url)
 
+env_statuses = {}
 
-    
+for tonomi_env_name in args.get('instances', {}).keys():
 
+  envs = []
+  # for app in marathon_client.list_apps():
+  #   for label, value in app.labels.items():
+  #     if label == '_tonomi_environment':
+  #       if value and value not in envs:
+  #         envs.append(value)
 
-    if env:
-        status = {
-            'flags': {
-                'active': True,
-                'converging': False,
-                'failed': False
-                #'failed': app.marathon_model['tasksUnhealthy'] > 0 #bool(vm.model.get('failure'))
-            }
+  envs = [e.id.replace('/', '') for e in marathon_client.list_groups()]
+
+  if tonomi_env_name in envs:
+
+    status = {
+      'flags': {
+        'active': True,
+        'converging': False,
+        'failed': False
+      }
+    }
+
+    env = marathon_client.get_group(tonomi_env_name)
+
+    interfaces = {
+      'application-entrypoint': {
+        'signals': {
+          'URL': 'https://host123.com' #ui.tasks[0].host
         }
-        
-        #zk = env.get_apps_by_type('zookeeper')[0]
-        #redis = env.get_apps_by_type('redis')[0]
-        ui = env.get_apps_by_type('web-ui')[0] if env.get_apps_by_type('web-ui') != [] else {}
-        interfaces = {
-            'application_entrypoint': {
-                'signals': {
-                    'URL': ui.get_info().get('URL', 'N/A')
-                    
-                }  
-            }
+      }
+    }
+
+    components = multidict()
+
+    for app in env.apps:
+      env_name = env.id.replace('/', '')
+      app_type = app.labels['_tonomi_application']
+
+      app = marathon_client.get_app(app.id)
+
+      if app_type == 'zookeeper':
+        interfaces[app_type] = {
+          'signals': {
+            'zookeeper-hosts': ['123', '123'],
+            'zookeeper-port': app.env['ZOO_PORT']
+          }
         }
-        components = multidict()
-
-        for app in env.applications:
-            interfaces[app.type] = {
-                'signals': app.get_info()
-            }
-            components[app.type] = {
-                'reference': {
-                    'mapping': app.type + '.' + app.type + '-by-id',
-                    'key': app.id
-                }
-            }
-        
-
-        
-        
-        env_infos[envid] = {
-            'instanceId': env.id,
-            'name': env.id,
-            'status': status,
-            'interfaces': interfaces,
-            'components': components,
+      elif app_type == 'cassandra':
+        interfaces[app_type] = {
+          'signals': {
+            'seed-hosts': '123',
+            'node-hosts': '123',
+            'jmx-port': app.labels['_jmx_port'],
+            'internode-communication-port': app.labels['_internode_communication_port'],
+            'tls-internode-commucation-port': app.labels['_tls_internode_communication_port'],
+            'thrift-client-port': app.labels['_thrift_client_port'],
+            'cql-native-port': app.labels['_cql_native_port']
+          }
         }
-
-    else:
-        # env is absent, set its status to destroyed
-        env_infos[envid] = {
-            'status': {
-                'flags': {
-                    'active': False,
-                    'converging': False,
-                    'failed': False
-                }
-            }
+      elif app_type == 'kafka':
+        interfaces[app_type] = {
+          'signals': {
+            'kafka-hosts': [task.host for task in app.tasks],
+            'kafka-port': app.env['KAFKA_PORT']
+          }
+        }
+      elif app_type == 'webui':
+        interfaces[app_type] = {
+          'signals': {
+            'link': '123',
+            'load-balancer-port': '123',
+            'hosts': '123'
+          }
         }
 
-result = {
-    'instances': env_infos
-}
-yaml.safe_dump(result, sys.stdout)
+      components[app_type] = {
+        'reference': {
+          'mapping': '{}.{}-by-id'.format(app_type, app_type),
+          'key': '/{}/{}'.format(env_name, app_type)
+        }
+      }
+
+    env_statuses[tonomi_env_name] = {
+      'instanceId': tonomi_env_name,
+      'name': tonomi_env_name,
+      'status': status,
+      'interfaces': interfaces,
+      'components': components,
+    }
+
+  else:
+    env_statuses[tonomi_env_name] = {
+      'status': {
+        'flags': {
+          'active': False,
+          'converging': False,
+          'failed': False
+        }
+      }
+    }
+
+yaml.safe_dump({ 'instances': env_statuses }, sys.stdout)

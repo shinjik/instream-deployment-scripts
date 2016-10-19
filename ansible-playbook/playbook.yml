@@ -26,6 +26,13 @@
     - role: ansible-marathon
       zookeeper_hostnames: "{{ groups.mesos_masters | join(':' + zookeeper_client_port + ',')  }}:{{ zookeeper_client_port  }}"
       marathon_version: "{{ marathon_version }}"
+      marathon_additional_configs:
+        - name: enable_features
+          value: external_volumes
+        - name: mesos_authentication_principal
+          value: marathon
+        - name: mesos_role
+          value: marathon
 
 - hosts: mesos_workers
   remote_user: ubuntu
@@ -33,6 +40,7 @@
   become_method: sudo
   roles:
     - role: ansible-docker
+      docker_opts: '"-g /mnt/docker"'
 
     - role: ansible-mesos
       mesos_install_mode: slave

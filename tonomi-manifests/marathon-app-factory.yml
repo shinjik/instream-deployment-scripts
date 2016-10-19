@@ -6,26 +6,20 @@ application:
             app-by-id: bind(factory#factory.instances)
         configuration:
             "*": bind(factory#configuration.*)
-      
     configuration:
         component.application: "Marathon Application"
         component.discoveryScript: /marathon/discover.py
         component.discoverySchedule: "0/30 * * * * ? *"
-        
-        
     components: 
         factory:
             type: scripted.ComponentFactory 
             interfaces:
                 configuration:
                     marathonURL: configuration(string)
-            
         scripting:
             type: reference.Service
             interfaces:
                 scripting:
-                    execute: receive-command(string script, object arguments => object results)  
-                
-                
+                    execute: receive-command(string script, object arguments => object results)
     bindings:
         - [factory, scripting]

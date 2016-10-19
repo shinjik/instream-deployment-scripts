@@ -2,49 +2,33 @@
 
 import sys
 import yaml
+from marathon import MarathonClient
+from marathon.models import MarathonApp, MarathonConstraint
+from marathon.models.container import *
+from marathon.models.app import PortDefinition, Residency
+from spark import *
 
-import marathon_comm
-
-
-arguments = yaml.safe_load(sys.stdin)
-
-marathon_url = arguments.get('configuration', {}).get('configuration.marathonURL', 'http://localhost:8080')
-
-app_ids = list(arguments.get('launch-instances', {}).keys())
+args = yaml.safe_load(sys.stdin)
+marathon_url = args.get('configuration', {}).get('configuration.marathonURL')
+marathon_client = MarathonClient(marathon_url)
 
 instance_results = {}
 
-for app in app_ids:
-    #command_id = list(arguments.get('instances', {}).get(app).get('commands').keys())[0]
-    configuration = arguments.get('launch-instances').get(app).get('configuration')
-    configuration['configuration.portMappings'] = [{'8088':'0'},{'8042':'0'},{'4040':'0'},{'2122':'0'}]
-    configuration['configuration.imageId'] = 'sequenceiq/spark:1.6.0'
-    configuration['configuration.labels'] = {'_tonomi_application': 'spark'}
-    cassandra = configuration['configuration.cassandraEndpoint'].split(':')
-    redis = configuration['configuration.redisEndpoint'].split(':')
-    configuration['configuration.env'] = {
-        "CASSANDRA_HOST": cassandra[0],
-        "CASSANDRA_PORT": cassandra[1],
-        "KAFKA_BROKER_LIST": configuration['configuration.kafkaBrokers'],
-        "REDIS_HOST": redis[0],
-        "REDIS_PORT": redis[1]  
-    }  
-    configuration['configuration.cmd'] = "bash ${MESOS_SANDBOX}/streaming-runner.sh"
-    configuration['fetch'] = [{ "uri": configuration['configuration.applicationUrl'], "executable": False, "cache": False}]
+for tonomi_cluster_id, app in args.get('launch-instances', {}).items():
+  configuration = app.get('configuration')
+  env_name = configuration.get('configuration.name')
+  tonomi_cluster_name = '/{}/spark'.format(env_name)
 
-    marathon_comm.create(marathon_url, configuration)
+  spark_app = SparkCluster(env_name, marathon_client)
+  spark_app.create()
 
-    instance_results[configuration['configuration.name']] = {
-        'instanceId': app,
-        '$set': {
-            'status.flags.converging': True,
-            'status.flags.active': False  
-           }
+  instance_results[tonomi_cluster_name] = {
+    'instanceId': tonomi_cluster_id,
+    'name': tonomi_cluster_name,
+    '$set': {
+      'status.flags.converging': True,
+      'status.flags.active': False
     }
+  }
 
-
-result = {
-    'instances': instance_results
-}
-
-yaml.safe_dump(result, sys.stdout)
+yaml.safe_dump({'instances': instance_results}, sys.stdout)

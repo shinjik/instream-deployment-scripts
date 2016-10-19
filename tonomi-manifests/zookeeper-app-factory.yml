@@ -2,38 +2,32 @@ application:
     interfaces:
         component:
             "*": bind(factory#component.*)
-        #redis:
-        #    app-by-id: bind(factory#factory.instances)
-        
+        zookeeper:
+            zookeeper-by-id: bind(factory#factory.instances)
         configuration:
             "*": bind(factory#configuration.*)
-      
     configuration:
         component.application: "Zookeeper on marathon"
         component.discoveryScript: /zookeeper/discover.py
         component.discoverySchedule: "0/30 * * * * ? *"
-        
-        
-    components: 
+    components:
         factory:
-            type: scripted.ComponentFactory 
+            type: scripted.ComponentFactory
             interfaces:
                 configuration:
                     marathonURL: configuration(string)
                 apps:
                     app-by-id: consume-signal(map<string,string>)
-            
         scripting:
             type: reference.Service
             interfaces:
                 scripting:
-                    execute: receive-command(string script, object arguments => object results)  
+                    execute: receive-command(string script, object arguments => object results)
         marathon:
             type: reference.Service
             interfaces:
-                apps: 
+                apps:
                     app-by-id: publish-signal(map<string,string>)
-
     bindings:
         - [factory, marathon]
         - [factory, scripting]

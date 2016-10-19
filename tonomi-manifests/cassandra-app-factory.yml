@@ -4,16 +4,12 @@ application:
             "*": bind(factory#component.*)
         cassandra:
             cassandra-by-id: bind(factory#factory.instances)
-
         configuration:
             "*": bind(factory#configuration.*)
-
     configuration:
         component.application: "Cassandra on marathon"
         component.discoveryScript: /cassandra/discover.py
         component.discoverySchedule: "0/30 * * * * ? *"
-
-
     components:
         factory:
             type: scripted.ComponentFactory
@@ -22,7 +18,6 @@ application:
                     marathonURL: configuration(string)
                 apps:
                     app-by-id: consume-signal(map<string,string>)
-
         scripting:
             type: reference.Service
             interfaces:
@@ -33,7 +28,6 @@ application:
             interfaces:
                 apps:
                     app-by-id: publish-signal(map<string,string>)
-
     bindings:
         - [factory, marathon]
         - [factory, scripting]

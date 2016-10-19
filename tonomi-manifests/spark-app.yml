@@ -8,48 +8,33 @@ application:
             "*": bind(application#compute.*)
         control:
             "*": bind(application#control.*)
-<<<<<<< 654926fceaa6339f08ef0391a8cc951a9ac629c1
-    components: 
-        application:
-            type: scripted.Component 
-=======
     components:
         application:
             type: scripted.Component
->>>>>>> Add tonomi kit file and manifests
             configuration:
                 factory.name: Spark on marathon Factory
-                factory.launchScript: /spark/create.py
-                factory.destroyScript: /spark/destroy.py
-                factory.healthCheckScript: /spark/healthCheck.py
-                factory.reconfigurationScript: /spark/reconfigure.py
+                factory.launchScript:           /spark/create.py
+                factory.destroyScript:          /spark/destroy.py
+                factory.healthCheckScript:      /spark/healthCheck.py
+                factory.reconfigurationScript:  /spark/reconfigure.py
                 factory.commandScripts:
-                    control.restart: /spark/restart.py
-                    control.scale: /spark/scale.py
+                    control.restart:            /spark/restart.py
+                    control.scale:              /spark/scale.py
             interfaces:
                 configuration:
-                    cpu: configuration(string)
-                    ram: configuration(int)
-                    disk: configuration(int)
-                    instances: configuration(int)
-                    #imageId: configuration(string)
-                    #portMappings: configuration(list<map<string, string>>)
-                    #cmd: configuration(string)
-                    name: configuration(string)
-                    applicationUrl: configuration(string)
-                    kafkaBrokers: configuration(string)
-                    cassandraEndpoint: configuration(string)
-                    redisEndpoint: configuration(string)
+                    name:               configuration(string)
+                    applicationUrl:     configuration(string)
+                    kafkaBrokers:       configuration(string)
+                    cassandraEndpoint:  configuration(string)
+                    redisEndpoint:      configuration(string)
                 spark:
-                    lbPort: publish-signal(string)
-                    #localPorts: publish-signal(list(string))
+                    hosts:              publish-signal(list<string>)
+                    load-balancer-port: publish-signal(string)
                 compute:
-                    ram: publish-signal(string)
-                    cpu: publish-signal(string)
-                    disk: publish-signal(string)
-                    instances: publish-signal(string)
-                    #portMappings: publish-signal(map<string, string>)
-
+                    ram:        publish-signal(string)
+                    cpu:        publish-signal(string)
+                    disk:       publish-signal(string)
+                    instances:  publish-signal(string)
                 control:
-                    restart: receive-command()
-                    scale: receive-command(int instances)
+                    restart:  receive-command()
+                    scale:    receive-command(int instances)

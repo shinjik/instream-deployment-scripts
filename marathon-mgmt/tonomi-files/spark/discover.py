@@ -2,32 +2,27 @@
 
 import sys
 import yaml
+from marathon import MarathonClient
 
-import marathon_comm
+args = yaml.safe_load(sys.stdin)
+marathon_url = args.get('configuration', {}).get('configuration.marathonURL')
+marathon_client = MarathonClient(marathon_url)
 
+result = {'instances': {}}
 
-arguments = yaml.safe_load(sys.stdin)
-
-marathon_url = arguments.get('configuration', {}).get('configuration.marathonURL', 'http://localhost:8080')
-
-apps = marathon_comm.list_apps(marathon_url, {'_tonomi_application': 'spark'})
-
-def get_tonomi_model(app):
-    if app.id:
-        return {
-            'name': app.id,
-            'interfaces': {
-                'info': {
-                    'signals': {
-                        'app-id': app.id
-                    }
-                }
-            }
+for app in marathon_client.list_apps():
+  if ('_tonomi_application', 'spark') in app.labels.items():
+    env_name = app.labels['_tonomi_environment']
+    tonomi_cluster_name = '/{}/spark'.format(env_name)
+    result['instances'][tonomi_cluster_name] = {
+      'name': tonomi_cluster_name,
+      'interfaces': {
+        'info': {
+          'signals': {
+            'app-id': tonomi_cluster_name
+          }
         }
-    else:
-        return {}
+      }
+    }
 
-result = {
-    'instances': { app.id: get_tonomi_model(app) for app in apps }
-}
 yaml.safe_dump(result, sys.stdout)

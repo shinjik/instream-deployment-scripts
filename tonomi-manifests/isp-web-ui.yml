@@ -1,4 +1,7 @@
 application:
+    configuration:
+        configuration.name: "sandbox"
+        configuration.applicationUrl: "link"
     interfaces:
         configuration:
             "*": bind(application#configuration.*)
@@ -13,35 +16,30 @@ application:
             type: scripted.Component
             configuration:
                 factory.name: ISP web UI on marathon Factory
-                factory.launchScript: /web-ui/create.py
-                factory.destroyScript: /web-ui/destroy.py
-                factory.healthCheckScript: /web-ui/healthCheck.py
-                factory.reconfigurationScript: /web-ui/reconfigure.py
+                factory.launchScript:           /web-ui/create.py
+                factory.destroyScript:          /web-ui/destroy.py
+                factory.healthCheckScript:      /web-ui/healthCheck.py
+                factory.reconfigurationScript:  /web-ui/reconfigure.py
                 factory.commandScripts:
-                    control.restart: /marathon/restart.py
-                    control.scale: /marathon/scale.py
+                    control.restart:            /web-ui/restart.py
+                    control.scale:              /web-ui/scale.py
             interfaces:
                 configuration:
-                    cpu: configuration(string)
-                    ram: configuration(int)
-                    disk: configuration(int)
-                    instances: configuration(int)
-                    #imageId: configuration(string)
-                    #portMappings: configuration(list<map<string, string>>)
-                    #cmd: configuration(string)
-                    name: configuration(string)
-                    cassandraEndpoint: configuration(string)
-                    applicationUrl: configuration(string)
+                    name:
+                      type: configuration(string)
+                      name: Environment name
+                    applicationUrl:
+                      type: configuration(string)
+                      name: S3 link
                 ui:
-                    lbPort: publish-signal(string)
-                    #localPorts: publish-signal(list(string))
+                    link:               publish-signal(string)
+                    load-balancer-port: publish-signal(string)
+                    hosts:              publish-signal(list<string>)
                 compute:
-                    ram: publish-signal(string)
-                    cpu: publish-signal(string)
-                    disk: publish-signal(string)
-                    instances: publish-signal(string)
-                    #portMappings: publish-signal(map<string, string>)
-
+                    ram:        publish-signal(string)
+                    cpu:        publish-signal(string)
+                    disk:       publish-signal(string)
+                    instances:  publish-signal(string)
                 control:
-                    restart: receive-command()
-                    scale: receive-command(int instances)
+                    restart:  receive-command()
+                    scale:    receive-command(int instances)

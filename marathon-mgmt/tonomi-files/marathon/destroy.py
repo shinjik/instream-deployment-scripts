@@ -2,64 +2,31 @@
 
 import sys
 import json
-import requests
 import yaml
+from marathon import MarathonClient
 
 
-def get_json(url):
-    r = requests.get(url)
-    return r.json()
+args = yaml.safe_load(sys.stdin)
+marathon_url = args.get('configuration', {}).get('configuration.marathonURL', '')
 
-def post_json(url, data=None):
-    r = requests.post(url, data)
-    return r.json()
-
-def make_request(method, url, data=None):
-    if data:
-        r = requests.request(method, url, data=data)
-    else:
-        r = requests.request(method, url)
-    if r.json():
-        return r.json()
-    else:
-        raise RuntimeError
-
-def list_apps(url):
-    res = get_json(url + "/v2/apps")
-    return res.get('apps', [])
-
-
-arguments = yaml.safe_load(sys.stdin)
-#yaml.safe_dump(arguments, sys.stderr)
-marathon_url = arguments.get('configuration', {}).get('configuration.marathonURL', 'http://localhost:8080')
-app_ids = list(arguments.get('instances', {}).keys())
+marathon_client = MarathonClient(marathon_url)
 
 instance_results = {}
 
-for app in app_ids:
-    #command_id = list(arguments.get('instances', {}).get(app).get('commands').keys())[0]
-    res =  make_request('DELETE', marathon_url + "/v2/apps" + app)
-    instance_results[app] = {
-        # '$pushAll': {
-        #     'commands.'+command_id: [
-        #         {'$intermediate': True}, { 'status.flags.converging': True }
-        #         #{'signals.status.flags.converging': True, 'status.flags.active': False, 'instances.status.flags.active': False, 'instances.status.flags.converging': True, 'signals.instances.tasks'
-        #         ]
-        #     },
-        # '$set': {
-        #     'status.flags.converging': False,
-        #     'status.flags.active': False,
-        #       'instances.tasks': []
-        #    }
+for tonomi_instance_name in args.get('instances', {}).keys():
+  try:
+    marathon_client.delete_app(tonomi_instance_name, True)
+  except:
+    pass
+
+  instance_results[tonomi_instance_name] = {
+    '$set': {
+      'status.flags.converging': False,
+      'status.flags.active': False,
+      'status.flags.failed': False
     }
-
-
-#sys.exit(1)
+  }
 
 
 
-result = {
-    'instances': instance_results
-}
-
-yaml.safe_dump(result, sys.stdout)
+yaml.safe_dump({ 'instances': instance_results }, sys.stdout)

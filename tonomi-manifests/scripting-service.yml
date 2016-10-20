@@ -1,0 +1,160 @@
+application:
+  configuration:
+    configuration.ip: ""
+    configuration.identity: "ubuntu"
+    configuration.hardwareId: "t2.micro"
+    configuration.scripts: "https://github.com/shinjik/instream-deployment-scripts/archive/master.zip"
+
+  interfaces:
+    configuration:
+      ip:         "bind(scripting#input.ip)"
+      identity:   "bind(scripting#input.identity)"
+      hardwareId: "bind(scripting#input.hardwareId)"
+      scripts:    "bind(scripting#input.scripts)"
+
+    scripting:
+      execute:        "bind(scripting#actions.execute)"
+      update-scripts: "bind(scripting#actions.update-scripts)"
+  components:
+    scripting:
+      type: workflow.Instance
+      interfaces:
+        input:
+          ip:
+            type:     configuration(string)
+          identity:
+            type:     configuration(string)
+          hardwareId:
+            type:     configuration(string)
+          scripts:
+            type:     configuration(string)
+        actions:
+          execute:        receive-command(string script, object arguments => object results)
+          update-scripts: receive-command(string scripts-url)
+
+      configuration:
+        configuration.workflows:
+          launch:
+            steps:
+              - get-env-props:
+                  action: getEnvironmentProperties
+                  output:
+                      config: result
+              - get-signals:
+                  action: getSignals
+                  output:
+                      signals: result
+              - provision-vm:
+                  action: provisionVms
+                  precedingPhases: [ get-signals ]
+                  parameters:
+                      hardwareId: "{$.hardwareId}"
+                      staticIps: ['{$.ip}']
+                      roleName: manager-node
+                      vmIdentity: "{$.identity}"
+                  output:
+                      result-ips: ips
+              - pip-dependencies:
+                  action: execrun
+                  precedingPhases: [ provision-vm ]
+                  parameters:
+                      roles: [ "manager-node" ]
+                      command:
+                          - |
+                            sudo apt-get install python3-pip -y &&
+                            sudo pip3 install pyyaml
+              - download-scripts:
+                  action: .update-scripts
+                  precedingPhases: [ provision-vm ]
+                  parameters:
+                      scripts-url: "{$.scripts}"
+            return:
+              - results:
+                  value: {}
+
+          execute:
+              parameters:
+                - script:
+                    description: Path to script
+                    type: string
+                - arguments:
+                    description: Arguments
+                    type: map
+              steps:
+                - serialize-args:
+                    action: serialize
+                    parameters:
+                        format: YAML
+                        input: "{$.arguments}"
+                    output:
+                        serialized-args: serialized
+                - dump-serialized-args:
+                    action: execrun
+                    precedingPhases: [ serialize-args ]
+                    parameters:
+                        roles: [ "manager-node" ]
+                        command:
+                            - |
+                              timestamp=`date +%s%N` &&
+                              script_file=/tmp/script-$${{timestamp}}.yml &&
+                              args_file=/tmp/arguments-$${{timestamp}}.yml &&
+                              result_file=/tmp/result-$${{timestamp}}.yml &&
+                              rm -f --preserve-root $$script_file $$args_file $$result_file &&
+                              echo "/home/ubuntu/marathon-mgmt/tonomi-files{$.script}" > $$script_file &&
+                              echo "{$.serialized-args}" >> $$args_file &&
+                              python3 -c "import yaml,sys; a={{}}; a['script']=open(sys.argv[1],'r').read().replace('\n', ''); a['arguments']=yaml.load(open(sys.argv[2],'r')); out=open(sys.argv[3],'w'); yaml.dump(a, out, default_flow_style=False); out.close();" $$script_file $$args_file $$result_file &&
+                              echo $$result_file
+                    output:
+                        arguments-file: stdout
+                - exec:
+                    action: execrun
+                    precedingPhases: [ dump-serialized-args ]
+                    parameters:
+                        roles: [ "manager-node" ]
+                        command:
+                            - |
+                              export PYTHONPATH=/home/ubuntu/marathon-mgmt/tonomi-files/common &&
+                              ./marathon-mgmt/invoke.py < {$.arguments-file[*][0]} &&
+                              prev_timestamp=`echo "{$.arguments-file[*][0]}" | sed -n 's/\(.*\)result\-\(.*\)\.yml/\2/p'` &&
+                              args_file=/tmp/arguments-$${{prev_timestamp}}.yml &&
+                              script_file=/tmp/script-$${{prev_timestamp}}.yml &&
+                              rm -f --preserve-root $$args_file $$script_file {$.arguments-file[*][0]}
+                    output:
+                        result: stdout
+              return:
+                - results:
+                    value: "{$.result[*][0]}"
+
+          update-scripts:
+              parameters:
+                - scripts-url:
+                    description: URL to new zip file with scripts
+                    type: string
+              steps:
+                - update-scripts:
+                    action: .update-scripts
+                    parameters:
+                      scripts-url: "{$.scripts-url}"
+
+          .update-scripts:
+              parameters:
+                - scripts-url:
+                    type: string
+              steps:
+                - update-scripts:
+                    action: execrun
+                    parameters:
+                      roles: [ "manager-node" ]
+                      command:
+                          - |
+                            rm -rf --preserve-root playbooks.zip &&
+                            wget "{$.scripts-url}" -O playbooks.zip &&
+                            folder=`echo "{$.scripts-url}" | cut -d/ -f 5` &&
+                            branch=`echo "{$.scripts-url}" | sed -n 's/\(.*\)archive\/\(.*\).zip/\2/p'` &&
+                            rm -rf --preserve-root ./marathon-mgmt &&
+                            rm -rf $${{folder}}-$${{branch}} &&
+                            unzip playbooks.zip &&
+                            mv $${{folder}}-$${{branch}}/marathon-mgmt marathon-mgmt &&
+                            find marathon-mgmt/tonomi-files -name "*.py" -type f -exec chmod +x {{}} \; &&
+                            chmod +x marathon-mgmt/invoke.py &&
+                            rm -rf $${{folder}}-$${{branch}}

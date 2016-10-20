@@ -11,7 +11,8 @@ class SparkApp(MarathonApplication):
         'cassandraEndpoint': None,
         'redisEndpoint': None,
         'kafkaBrokers': None,
-        'applicationUrl': 'https://s3-us-west-1.amazonaws.com/streaming-artifacts/in-stream-tweets-analyzer.tar.gz'
+        'applicationUrl': 'https://s3-us-west-1.amazonaws.com/streaming-artifacts/in-stream-tweets-analyzer.tar.gz',
+        'redisPopulatorUrl': 'https://s3-us-west-1.amazonaws.com/streaming-artifacts/redis-populator.tar.gz'
     }
 
     def get_info(self):
@@ -29,8 +30,11 @@ class SparkApp(MarathonApplication):
     def _get_creation_defaults(self):
         configuration = {}
     
-        configuration['configuration.cmd'] = "bash ${MESOS_SANDBOX}/streaming-runner.sh"
-        configuration['fetch'] = [{ "uri": self.get_dependency('applicationUrl'), "executable": False, "cache": False}]
+        configuration['configuration.cmd'] = "cd ${MESOS_SANDBOX}/redis-populator && bash ./populator-runner.sh && cd ${MESOS_SANDBOX} && bash ./streaming-runner.sh"
+        configuration['fetch'] = [
+            { "uri": self.get_dependency('applicationUrl'), "executable": False, "cache": False},
+            { "uri": self.get_dependency('redisPopulatorUrl'), "executable": False, "cache": False}
+        ]
 
         cassandra = self.get_dependency('cassandraEndpoint').split(':')
         redis = self.get_dependency('redisEndpoint').split(':')

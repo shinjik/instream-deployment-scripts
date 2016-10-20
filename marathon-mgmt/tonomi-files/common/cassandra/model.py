@@ -7,6 +7,10 @@ from marathon_app import MarathonApplication
 class CassandraApp(MarathonApplication):
     _type = 'cassandra'
 
+    _dependencies = {
+        'schemaUrl': 'https://s3-us-west-1.amazonaws.com/streaming-artifacts/cassandra-schema.tar.gz'
+    }
+
     def get_info(self):
         
         ens = []
@@ -48,7 +52,7 @@ class CassandraApp(MarathonApplication):
             }
 
 
-        configuration['configuration.cmd'] = "chown -R cassandra /var/lib/cassandra && start"
+        configuration['configuration.cmd'] = "chown -R cassandra /var/lib/cassandra && cd ${MESOS_SANDBOX}/cassandra-schema && ./apply_schema.sh & start"
 
         configuration['configuration.name'] = self.id
         configuration['configuration.cpu'] = 0.5
@@ -57,7 +61,7 @@ class CassandraApp(MarathonApplication):
         configuration['configuration.instances'] = 1
         
         configuration['configuration.constraints'] = [["hostname", "UNIQUE"]]
-        configuration['configuration.portMappings'] = [{'9042':'0'}, {'9160':'0'}]
+        configuration['configuration.portMappings'] = [{'9042':'0'}, {'9160':'0'}, {'22': '0'}]
         configuration['configuration.imageId'] = 'poklet/cassandra'
         configuration['configuration.labels'] = {'_tonomi_application': 'cassandra'}
 

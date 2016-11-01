@@ -1,0 +1,6 @@
+instances:
+  '/sandbox/sample':
+    instanceId: 'sandbox'
+    $set:
+      status.flags.active: false
+      status.flags.converging: true

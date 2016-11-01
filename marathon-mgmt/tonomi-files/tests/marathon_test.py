@@ -1,106 +1,77 @@
 from io import StringIO
 from marathon import MarathonClient
+from marathon.models import MarathonApp
 import unittest
-import common_test
+from unittest.mock import patch
+from common_test import *
 import requests_mock
 import requests
 import sys
 import yaml
 import json
+from mock import MagicMock
+from marathon_client_fakes import *
 
 
-class TestMarathonScripts(unittest.TestCase, common_test.TestCommon):
+class TestMarathonScripts(unittest.TestCase, TestCommon):
+
   def setUp(self):
-    self.prepare_constants('marathon')
+    self.prepare_constants(MARATHON_APP)
 
-  @requests_mock.mock()
-  def test_launch(self, mock):
-    mock.post('{}/v2/apps'.format(self.HOST), text='{"apps": []}')
+  @patch('requests.Session.request')
+  def test_launch(self, request):
+    request.return_value = MagicMock(status_code=201)
 
-    input_obj = {
-      'configuration': {
-        'configuration.marathonURL': self.HOST
-      },
-      'launch-instances': {
-        'sandbox': {
-          'configuration': {
-            'configuration.name': '/sandbox/sample',
-            'configuration.portMappings': [],
-            'configuration.cmd': 'python -m SimpleHTTPServer',
-            'configuration.cpu': '0.5',
-            'configuration.ram': '256',
-            'configuration.disk': '256',
-            'configuration.instances': '1',
-            'configuration.imageId': 'python'
-          }
-        }
-      }
-    }
-
-    output_obj = {
-      'instances': {
-        '/sandbox/sample': {
-          'instanceId': 'sandbox',
-          '$set': {
-            'status.flags.active': False,
-            'status.flags.converging': True,
-          }
-        }
-      }
-    }
+    input_obj, output_obj = self.get_yaml_obj(CREATE_ACTION)
 
     script_result = self.run_script(self.LAUNCH_SCRIPT, input_obj)
     self.check_responses(output_obj, script_result)
 
-  @requests_mock.mock()
-  def test_discover(self, mock):
-    mock.get('{}/v2/apps'.format(self.HOST), text='{"apps": []}')
+    self.assertEqual(1, len(request.mock_calls))
 
-    input_obj = self.DISCOVER_INPUT_OBJ
+    json_app_configuration = json.loads(tuple(request.mock_calls[0])[2]['data'])
+    self.assertDictEqual(json_app_configuration, self.get_expected_app_json(CREATE_ACTION))
 
-    output_obj = {
-      'instances': {}
-    }
+  @patch('marathon.MarathonClient.list_apps')
+  def test_discover(self, list_apps):
+
+    list_apps.return_value = marathon_discover_list_apps()
+
+    input_obj, output_obj = self.get_yaml_obj(DISCOVER_ACTION)
 
     script_result = self.run_script(self.DISCOVER_SCRIPT, input_obj)
     self.check_responses(output_obj, script_result)
 
-  @requests_mock.mock()
-  def test_health_check(self, mock):
-    pass
+    self.assertEqual(1, len(list_apps.mock_calls))
 
-  @requests_mock.mock()
-  def test_destroy(self, mock):
-    mock.delete('{}/v2/apps//sample?force=False'.format(self.HOST), text='{"apps": []}')
+  @patch('marathon.MarathonClient.get_app')
+  def test_health_check(self, get_app):
 
-    input_obj = {
-      'configuration': {
-        'configuration.marathonURL': self.HOST
-      },
-      'instances': {
-        '/sample': {
-        }
-      }
-    }
+    get_app.side_effect = marathon_health_check_get_app()
+    input_obj, output_obj = self.get_yaml_obj(HEALTH_CHECK_ACTION)
 
-    output_obj = {
-      'instances': {
-        '/sample': {
-          '$set': {
-            'status.flags.converging': False,
-            'status.flags.active': False,
-            'status.flags.failed': False
-          }
-        }
-      }
-    }
+    script_result = self.run_script(self.HEALTH_CHECK_SCRIPT, input_obj)
+
+    self.assertEqual(2, len(get_app.mock_calls))
+    self.check_responses(output_obj, script_result)
+
+  @patch('marathon.MarathonClient.delete_app')
+  def test_destroy(self, delete_app):
+
+    input_obj, output_obj = self.get_yaml_obj(DESTROY_ACTION)
 
     script_result = self.run_script(self.DESTROY_SCRIPT, input_obj)
     self.check_responses(output_obj, script_result)
+    self.assertEqual(1, len(delete_app.mock_calls))
 
-  @requests_mock.mock()
-  def test_scale(self, mock):
-    pass
+  @patch('marathon.MarathonClient.scale_app')
+  def test_scale(self, scale_app):
+
+    input_obj, output_obj = self.get_yaml_obj(SCALE_ACTION)
+
+    script_result = self.run_script(self.SCALE_SCRIPT, input_obj)
+    self.check_responses(output_obj, script_result)
+    self.assertEqual(1, len(scale_app.mock_calls))
 
 
 if __name__ == '__main__':

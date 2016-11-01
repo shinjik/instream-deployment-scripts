@@ -7,22 +7,21 @@ from collections import defaultdict
 from yaml.representer import SafeRepresenter
 from marathon import MarathonClient
 
-
 # to serialize defaultdicts normally
 SafeRepresenter.add_representer(defaultdict, SafeRepresenter.represent_dict)
+
+
 def multidict():
   return defaultdict(multidict)
 
 
 args = yaml.safe_load(sys.stdin)
-
-marathon_url = args.get('configuration', {}).get('configuration.marathonURL', '')
-
+marathon_url = args.get('configuration', {}).get('configuration.marathonURL')
 marathon_client = MarathonClient(marathon_url)
 
 app_statuses = {}
 
-for tonomi_instance_name in args.get('instances', {}).keys():
+for tonomi_instance_name in sorted(list(args.get('instances', {}).keys())):
   try:
     app = marathon_client.get_app(tonomi_instance_name)
     if '_tonomi_environment' not in app.labels or '_tonomi_application' not in app.labels:
@@ -49,7 +48,7 @@ for tonomi_instance_name in args.get('instances', {}).keys():
       #   t['ports'] = task.ports
       tasks.append(t)
 
-    port_mappings = { str(p.container_port): str(p.service_port) for p in app.container.docker.port_mappings }
+    port_mappings = {str(p.container_port): str(p.service_port) for p in app.container.docker.port_mappings}
     interfaces = {
       'info': {
         'signals': {
@@ -74,7 +73,7 @@ for tonomi_instance_name in args.get('instances', {}).keys():
       }
     }
 
-    components = multidict()
+    components = {}  # multidict()
 
     app_statuses[tonomi_instance_name] = {
       'instanceId': tonomi_instance_name,
@@ -95,4 +94,4 @@ for tonomi_instance_name in args.get('instances', {}).keys():
       }
     }
 
-yaml.safe_dump({ 'instances': app_statuses }, sys.stdout)
+yaml.safe_dump({'instances': app_statuses}, sys.stdout)

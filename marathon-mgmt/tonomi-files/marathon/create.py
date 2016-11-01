@@ -44,7 +44,6 @@ for tonomi_instance_id, app in args.get('launch-instances', {}).items():
   container = MarathonContainer(docker=docker)
 
   labels = {
-    '_tonomi_marathon_instance_id': tonomi_instance_id,
     '_tonomi_environment': tonomi_env_name
   }
 

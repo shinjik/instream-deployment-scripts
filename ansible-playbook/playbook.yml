@@ -50,3 +50,6 @@
       mesos_containerizers: "docker,mesos"
       mesos_version: "{{ mesos_version }}"
       mesos_package_version: "{{ mesos_package_version }}"
+      mesos_slave_additional_configs:
+        - name: ATTRIBUTES
+          value: '"node_type:{{ mesos_node_type }}"'

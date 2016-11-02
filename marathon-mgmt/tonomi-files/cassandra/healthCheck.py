@@ -6,10 +6,12 @@ from collections import defaultdict
 from yaml.representer import SafeRepresenter
 from marathon import MarathonClient
 
-# to serialize defaultdicts normally
-SafeRepresenter.add_representer(defaultdict, SafeRepresenter.represent_dict)
-def multidict():
-  return defaultdict(multidict)
+# # to serialize defaultdicts normally
+# SafeRepresenter.add_representer(defaultdict, SafeRepresenter.represent_dict)
+#
+#
+# def multidict():
+#   return defaultdict(multidict)
 
 
 args = yaml.safe_load(sys.stdin)
@@ -18,12 +20,12 @@ marathon_client = MarathonClient(marathon_url)
 
 app_statuses = {}
 
-for tonomi_cluster_instance_name in args.get('instances', {}).keys():
+for tonomi_cluster_instance_name in sorted(args.get('instances', {}).keys()):
   env_name = tonomi_cluster_instance_name.split('/')[1]
 
   cluster_exist = False
-  list_apps = marathon_client.list_apps()
-  for app in list_apps:
+
+  for app in marathon_client.list_apps():
     if app.id == '/{}/cassandra-seed'.format(env_name) or app.id == '/{}/cassandra-node'.format(env_name):
       cluster_exist = True
 
@@ -45,25 +47,25 @@ for tonomi_cluster_instance_name in args.get('instances', {}).keys():
     interfaces = {
       'compute': {
         'signals': {
-          'ram': seed_app.mem * seed_tasks_running, # + node_app.mem * node_tasks_running,
-          'cpu': seed_app.cpus * seed_tasks_running, # + node_app.cpus * node_tasks_running,
-          'disk': seed_app.disk * seed_tasks_running # + node_app.disk * node_tasks_running
+          'ram': seed_app.mem * seed_tasks_running,  # + node_app.mem * node_tasks_running,
+          'cpu': seed_app.cpus * seed_tasks_running,  # + node_app.cpus * node_tasks_running,
+          'disk': seed_app.disk * seed_tasks_running  # + node_app.disk * node_tasks_running
         }
       },
       'cassandra': {
         'signals': {
           'seed-hosts': [seed_task.host for seed_task in seed_app.tasks],
-          'node-hosts': [], #[node_task.host for node_task in node_app.tasks],
-          'jmx-port':                       seed_app.labels['_jmx_port'],
-          'internode-communication-port':   seed_app.labels['_internode_communication_port'],
-          'tls-internode-commucation-port': seed_app.labels['_tls_internode_communication_port'],
-          'thrift-client-port':             seed_app.labels['_thrift_client_port'],
-          'cql-native-port':                seed_app.labels['_cql_native_port']
+          'node-hosts': [],  # [node_task.host for node_task in node_app.tasks],
+          'jmx-port': seed_app.labels['_jmx_port'],
+          'internode-communication-port': seed_app.labels['_internode_communication_port'],
+          'tls-internode-communication-port': seed_app.labels['_tls_internode_communication_port'],
+          'thrift-client-port': seed_app.labels['_thrift_client_port'],
+          'cql-native-port': seed_app.labels['_cql_native_port']
         }
       }
     }
 
-    components = multidict()
+    components = {} #multidict()
     components['cassandra-seed'] = {
       'reference': {
         'mapping': 'apps.app-by-id',
@@ -96,4 +98,4 @@ for tonomi_cluster_instance_name in args.get('instances', {}).keys():
       }
     }
 
-yaml.safe_dump({ 'instances': app_statuses }, sys.stdout)
+yaml.safe_dump({'instances': app_statuses}, sys.stdout)

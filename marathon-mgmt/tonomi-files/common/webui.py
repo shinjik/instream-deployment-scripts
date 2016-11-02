@@ -56,5 +56,3 @@ class WebUINodes(object):
                             health_checks=health_checks)
 
     self.marathon_client.create_app(self.app_name, webui_app)
-
-    return self.marathon_client.get_app(self.app_name)

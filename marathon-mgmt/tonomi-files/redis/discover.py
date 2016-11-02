@@ -4,7 +4,6 @@ import sys
 import yaml
 from marathon import MarathonClient
 
-
 args = yaml.safe_load(sys.stdin)
 marathon_url = args.get('configuration', {}).get('configuration.marathonURL')
 marathon_client = MarathonClient(marathon_url)

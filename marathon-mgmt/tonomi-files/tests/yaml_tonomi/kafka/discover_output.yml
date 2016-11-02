@@ -1,0 +1,7 @@
+instances:
+  '/sandbox/kafka':
+    name: '/sandbox/kafka'
+    interfaces:
+      info:
+        signals:
+          app-id: '/sandbox/kafka'

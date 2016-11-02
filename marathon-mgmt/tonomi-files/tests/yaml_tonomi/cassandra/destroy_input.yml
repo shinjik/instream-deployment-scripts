@@ -1,0 +1,4 @@
+configuration:
+  configuration.marathonURL: 'http://localhost'
+instances:
+  '/sandbox/cassandra':

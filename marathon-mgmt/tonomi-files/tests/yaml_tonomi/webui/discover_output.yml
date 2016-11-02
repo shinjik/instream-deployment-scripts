@@ -1,0 +1,13 @@
+instances:
+  '/sandbox/webui':
+    name: '/sandbox/webui'
+    interfaces:
+      info:
+        signals:
+          app-id: '/sandbox/webui'
+  '/test/webui':
+    name: '/test/webui'
+    interfaces:
+      info:
+        signals:
+          app-id: '/test/webui'

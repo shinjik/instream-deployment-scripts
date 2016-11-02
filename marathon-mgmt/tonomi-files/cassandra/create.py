@@ -8,7 +8,6 @@ from marathon.models.container import *
 from marathon.models.app import PortDefinition, Residency
 from cassandra import *
 
-
 args = yaml.safe_load(sys.stdin)
 marathon_url = args.get('configuration', {}).get('configuration.marathonURL')
 marathon_client = MarathonClient(marathon_url)
@@ -32,4 +31,4 @@ for tonomi_cluster_id, app in args.get('launch-instances', {}).items():
     }
   }
 
-yaml.safe_dump({ 'instances': instance_results }, sys.stdout)
+yaml.safe_dump({'instances': instance_results}, sys.stdout)

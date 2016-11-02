@@ -69,15 +69,6 @@ class RedisNode(object):
 
     self.marathon_client.create_app(self.app_name, new_redis_app)
 
-  def host(self):
-    ip = None
-    while not ip:
-      try:
-        ip = self.marathon_client.get_app(self.app_name).tasks[0].host
-        break
-      except:
-        pass
-    return ip
 
 class RedisCluster(object):
   def __init__(self, env_name, marathon_client):

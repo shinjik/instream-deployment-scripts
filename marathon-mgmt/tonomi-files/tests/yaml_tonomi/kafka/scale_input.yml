@@ -1,0 +1,9 @@
+configuration:
+  configuration.marathonURL: 'http://localhost'
+instances:
+  '/sandbox/kafka':
+    commands:
+      1:
+        control:
+          scale:
+            instances: 2

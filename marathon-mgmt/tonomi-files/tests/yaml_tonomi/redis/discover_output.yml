@@ -1,0 +1,7 @@
+instances:
+  '/sandbox/redis':
+    name: '/sandbox/redis'
+    interfaces:
+      info:
+        signals:
+          app-id: '/sandbox/redis'

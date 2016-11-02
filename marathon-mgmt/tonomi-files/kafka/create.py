@@ -21,7 +21,6 @@ for tonomi_cluster_id, app in args.get('launch-instances', {}).items():
   zookeeper_host = zookeeper_node.tasks[0].host
   zookeeper_port = zookeeper_node.env['ZOO_PORT']
 
-
   kafka_app = KafkaCluster(env_name, zookeeper_host, zookeeper_port, marathon_client)
   kafka_app.create()
 
@@ -44,5 +43,4 @@ for tonomi_cluster_id, app in args.get('launch-instances', {}).items():
   #     }
   #   }
 
-
-yaml.safe_dump({ 'instances': instance_results }, sys.stdout)
+yaml.safe_dump({'instances': instance_results}, sys.stdout)

@@ -5,9 +5,8 @@ import json
 import yaml
 from marathon import MarathonClient
 
-
 args = yaml.safe_load(sys.stdin)
-marathon_url = args.get('configuration', {}).get('configuration.marathonURL', '')
+marathon_url = args.get('configuration', {}).get('configuration.marathonURL')
 marathon_client = MarathonClient(marathon_url)
 
 instance_results = {}
@@ -48,4 +47,4 @@ for tonomi_instance_name in args.get('instances', {}).keys():
       }
     }
 
-yaml.safe_dump({ 'instances': instance_results }, sys.stdout)
+yaml.safe_dump({'instances': instance_results}, sys.stdout)

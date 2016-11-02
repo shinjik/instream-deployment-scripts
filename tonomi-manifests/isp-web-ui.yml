@@ -16,13 +16,13 @@ application:
             type: scripted.Component
             configuration:
                 factory.name: ISP web UI on marathon Factory
-                factory.launchScript:           /web-ui/create.py
-                factory.destroyScript:          /web-ui/destroy.py
-                factory.healthCheckScript:      /web-ui/healthCheck.py
-                factory.reconfigurationScript:  /web-ui/reconfigure.py
+                factory.launchScript:           /webui/create.py
+                factory.destroyScript:          /webui/destroy.py
+                factory.healthCheckScript:      /webui/healthCheck.py
+                factory.reconfigurationScript:  /webui/reconfigure.py
                 factory.commandScripts:
-                    control.restart:            /web-ui/restart.py
-                    control.scale:              /web-ui/scale.py
+                    control.restart:            /webui/restart.py
+                    control.scale:              /webui/scale.py
             interfaces:
                 configuration:
                     name:

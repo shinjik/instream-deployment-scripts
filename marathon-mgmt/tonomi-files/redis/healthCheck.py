@@ -6,12 +6,12 @@ from collections import defaultdict
 from yaml.representer import SafeRepresenter
 from marathon import MarathonClient
 
-# to serialize defaultdicts normally
-SafeRepresenter.add_representer(defaultdict, SafeRepresenter.represent_dict)
-
-
-def multidict():
-  return defaultdict(multidict)
+# # to serialize defaultdicts normally
+# SafeRepresenter.add_representer(defaultdict, SafeRepresenter.represent_dict)
+#
+#
+# def multidict():
+#   return defaultdict(multidict)
 
 
 args = yaml.safe_load(sys.stdin)
@@ -67,7 +67,7 @@ for tonomi_cluster_instance_name in args.get('instances', {}).keys():
       }
     }
 
-    components = multidict()
+    components = {} #multidict()
     components['redis-master'] = {
       'reference': {
         'mapping': 'apps.app-by-id',

@@ -6,12 +6,12 @@ from collections import defaultdict
 from yaml.representer import SafeRepresenter
 from marathon import MarathonClient
 
-# to serialize defaultdicts normally
-SafeRepresenter.add_representer(defaultdict, SafeRepresenter.represent_dict)
+# # to serialize defaultdicts normally
+# SafeRepresenter.add_representer(defaultdict, SafeRepresenter.represent_dict)
 
 
-def multidict():
-  return defaultdict(multidict)
+# def multidict():
+#   return defaultdict(multidict)
 
 
 args = yaml.safe_load(sys.stdin)
@@ -22,7 +22,7 @@ app_statuses = {}
 
 for tonomi_app_name in args.get('instances', {}).keys():
 
-  try:
+  # try:
     app = marathon_client.get_app(tonomi_app_name)
 
     status = {
@@ -47,14 +47,14 @@ for tonomi_app_name in args.get('instances', {}).keys():
       },
       'ui': {
         'signals': {
-          'link': 'http://{}:{}'.format(marathon_url.split(':')[1], service_port),
+          'link': 'http://{}:{}'.format(marathon_url.split(':')[1][2:], service_port),
           'load-balancer-port': str(service_port),
           'hosts': hosts
         }
       }
     }
 
-    components = multidict()
+    components = {} #multidict()
     components['ui'] = {
       'reference': {
         'mapping': 'apps.app-by-id',
@@ -69,15 +69,15 @@ for tonomi_app_name in args.get('instances', {}).keys():
       'interfaces': interfaces,
       'components': components,
     }
-  except:
-    app_statuses[tonomi_app_name] = {
-      'status': {
-        'flags': {
-          'active': False,
-          'converging': False,
-          'failed': False
-        }
-      }
-    }
+  # except:
+  #   app_statuses[tonomi_app_name] = {
+  #     'status': {
+  #       'flags': {
+  #         'active': False,
+  #         'converging': False,
+  #         'failed': False
+  #       }
+  #     }
+  #   }
 
 yaml.safe_dump({'instances': app_statuses}, sys.stdout)

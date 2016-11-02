@@ -17,7 +17,8 @@ for tonomi_cluster_name in args.get('instances', {}).keys():
   instance_results[tonomi_cluster_name] = {
     '$set': {
       'status.flags.converging': False,
-      'status.flags.active': False
+      'status.flags.active': False,
+      'status.flags.failed': False
     }
   }
 

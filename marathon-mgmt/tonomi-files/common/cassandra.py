@@ -16,7 +16,6 @@ class CassandraNode(object):
 
     self.marathon_client = marathon_client
     self.seed_hosts = seed_hosts
-    self.application = None
     self.ports = ports
 
   def create(self):
@@ -56,9 +55,6 @@ class CassandraNode(object):
                                     container=container, constraints=constraints, residency=residency, env=env,
                                     health_checks=health_checks)
     self.marathon_client.create_app(self.app_name, new_cassandra_app)
-    self.application = self.marathon_client.get_app(self.app_name)
-    return self.application
-
 
 class CassandraCluster(object):
   def __init__(self, env_name, marathon_client):
@@ -86,7 +82,7 @@ class CassandraCluster(object):
         port_inc += 2
         checked_envs.append(env_name)
 
-    ports = { k: str(int(v)+port_inc) for k, v in ports.items() }
+    ports = {k: str(int(v) + port_inc) for k, v in ports.items()}
 
     seed = CassandraNode(self.env_name, self.marathon_client, ports)
     seed.create()

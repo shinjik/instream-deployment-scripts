@@ -8,7 +8,7 @@ application:
             "*": bind(factory#configuration.*)
     configuration:
         component.application: "ISP web UI on marathon"
-        component.discoveryScript: /web-ui/discover.py
+        component.discoveryScript: /webui/discover.py
         component.discoverySchedule: "0/30 * * * * ? *"
     components:
         factory:

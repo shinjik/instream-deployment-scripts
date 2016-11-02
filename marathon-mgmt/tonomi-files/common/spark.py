@@ -72,6 +72,12 @@ class SparkCluster(object):
       }
     ]
 
+    health_checks = [
+      MarathonHealthCheck(grace_period_seconds=300, interval_seconds=20, max_consecutive_failures=3,
+                          protocol='HTTP', timeout_seconds=20, ignore_http1xx=True, port_index=2)
+    ]
+
     spark_app = MarathonApp(id=self.app_name, cmd=cmd, cpus=1, mem=500, instances=1, disk=512, labels=labels,
-                            container=container, constraints=constraints, env=env, fetch=fetch)
+                            container=container, constraints=constraints, env=env, fetch=fetch,
+                            health_checks=health_checks)
     self.marathon_client.create_app(self.app_name, spark_app)

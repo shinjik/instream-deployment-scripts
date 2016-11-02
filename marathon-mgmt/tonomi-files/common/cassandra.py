@@ -37,23 +37,35 @@ class CassandraNode(object):
       '_cql_native_port': self.ports['9042']
     }
 
-    cmd = "chown -R cassandra /var/lib/cassandra && sed -i 's/{p11}/{p12}/' /etc/cassandra/default.conf/cqlshrc.sample && sed -i 's/{p31}/{p32}/' /etc/cassandra/default.conf/cassandra-env.sh && sed -i 's/{p41}/{p42}/;s/{p51}/{p52}/;s/{p11}/{p12}/;s/{p21}/{p22}/;s/{p31}/{p32}/' /etc/cassandra/default.conf/cassandra.yaml && start" \
-      .format(p11='9042', p12=self.ports['9042'], p21='9160', p22=self.ports['9160'], p31='7199',
-              p32=self.ports['7199'], p41='7000', p42=self.ports['7000'], p51='7001', p52=self.ports['7001'])
+    cmd = None
+
+    if self.seed_hosts == '':
+      cmd = "chown -R cassandra /var/lib/cassandra && sed -i 's/{p11}/{p12}/' /etc/cassandra/default.conf/cqlshrc.sample && sed -i 's/{p31}/{p32}/' /etc/cassandra/default.conf/cassandra-env.sh && sed -i 's/{p41}/{p42}/;s/{p51}/{p52}/;s/{p11}/{p12}/;s/{p21}/{p22}/;s/{p31}/{p32}/' /etc/cassandra/default.conf/cassandra.yaml && cd ${{MESOS_SANDBOX}}/cassandra-schema && ./apply_schema.sh & start" \
+        .format(p11='9042', p12=self.ports['9042'], p21='9160', p22=self.ports['9160'], p31='7199',
+                p32=self.ports['7199'], p41='7000', p42=self.ports['7000'], p51='7001', p52=self.ports['7001'])
+    else:
+      cmd = "chown -R cassandra /var/lib/cassandra && sed -i 's/{p11}/{p12}/' /etc/cassandra/default.conf/cqlshrc.sample && sed -i 's/{p31}/{p32}/' /etc/cassandra/default.conf/cassandra-env.sh && sed -i 's/{p41}/{p42}/;s/{p51}/{p52}/;s/{p11}/{p12}/;s/{p21}/{p22}/;s/{p31}/{p32}/' /etc/cassandra/default.conf/cassandra.yaml && start" \
+        .format(p11='9042', p12=self.ports['9042'], p21='9160', p22=self.ports['9160'], p31='7199',
+                p32=self.ports['7199'], p41='7000', p42=self.ports['7000'], p51='7001', p52=self.ports['7001'])
 
     constraints = [MarathonConstraint(field='hostname', operator='UNIQUE', value=None)]
     container = MarathonContainer(docker=docker, volumes=volumes)
     residency = Residency(task_lost_behavior='WAIT_FOREVER')
-    env = {'SEEDS': self.seed_hosts}
+    env = {
+      'SEEDS': self.seed_hosts,
+      'CASSANDRA_PORT': str(self.ports['9042'])
+    }
 
     health_checks = [
       MarathonHealthCheck(grace_period_seconds=300, interval_seconds=20, max_consecutive_failures=3,
                           protocol='TCP', timeout_seconds=20, ignore_http1xx=False, port=int(self.ports['9042']))
     ]
 
+    uris = ['https://s3-us-west-1.amazonaws.com/streaming-artifacts/mk-cassandra-schema.tar.gz']
+
     new_cassandra_app = MarathonApp(id=self.app_name, cmd=cmd, cpus=0.5, mem=400, instances=1, disk=1024, labels=labels,
                                     container=container, constraints=constraints, residency=residency, env=env,
-                                    health_checks=health_checks)
+                                    health_checks=health_checks, uris=uris)
     self.marathon_client.create_app(self.app_name, new_cassandra_app)
 
 class CassandraCluster(object):

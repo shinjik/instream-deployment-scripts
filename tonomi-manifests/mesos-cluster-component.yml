@@ -127,28 +127,28 @@ application:
             name: Quantity of mesos masters
           slaves_general_hardware_quantity:
             type: configuration(int)
-            name: Quantity of slaves with general tag
+            name: Quantity of general purpose slaves
           general_tag_hardware:
             type: configuration(string)
-            name: Hardware for instances with general tag
+            name: General purpose hardware
           slaves_cpu_hardware_quantity:
             type: configuration(int)
-            name: Quantity of slaves with cpu tag
+            name: Quantity of slaves with cpu-instensive hardware
           cpu_tag_hardware:
             type: configuration(string)
-            name: Hardware for instances with cpu tag
+            name: CPU-intensive hardware
           slaves_memory_hardware_quantity:
             type: configuration(int)
-            name: Quantity of slaves with memory tag
+            name: Quantity of slaves with memory-intensive hardware
           memory_tag_hardware:
             type: configuration(string)
-            name: Hardware for instances with memory tag
+            name: Memory-intensive hardware
           slaves_disk_hardware_quantity:
             type: configuration(int)
-            name: Quantity of slaves with disk tag
+            name: Quantity of slaves with disk-intensive hardware
           disk_tag_hardware:
             type: configuration(string)
-            name: Hardware for instances with disk tag
+            name: Disk-intensive hardware
           playbooks_url:
             type: configuration(string)
             name: Ansible playbooks
@@ -961,7 +961,7 @@ application:
                               apt-get install software-properties-common &&
                               apt-add-repository ppa:ansible/ansible &&
                               apt-get update &&
-                              apt-get install -y ansible unzip
+                              apt-get install -y git ansible unzip
 
           .generate-ssh-key:
               steps:
@@ -1104,8 +1104,9 @@ application:
                             rm -rf $${{folder}}-$${{branch}} &&
                             unzip playbooks.zip &&
                             mv $${{folder}}-$${{branch}}/ansible-playbook ansible-playbook &&
-                            rm -rf $${{folder}}-$${{branch}}
-                            ansible-galaxy install -r ansible-playbook/install_roles.yml
+                            rm -rf $${{folder}}-$${{branch}} &&
+                            sudo ansible-galaxy install -r ansible-playbook/install_roles.yml &&
+                            sudo chown -R ubuntu:ubuntu .ansible .ansible_galaxy
 
           .run-ansible:
               steps:

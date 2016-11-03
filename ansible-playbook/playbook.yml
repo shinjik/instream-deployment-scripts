@@ -3,8 +3,9 @@
   remote_user: ubuntu
   become: yes
   become_method: sudo
-
   roles:
+    - role: ansible-ntp
+
     - role: ansible-zookeeper
       zookeeper_hosts: "{{ mesos_master_hosts }}"
 
@@ -39,6 +40,8 @@
   become: yes
   become_method: sudo
   roles:
+    - role: ansible-ntp
+
     - role: ansible-docker
       docker_opts: '"-g /mnt/docker"'
 

@@ -1,23 +1,27 @@
+- src: https://github.com/resmo/ansible-role-ntp
+  version: 4fc673c
+  name: ansible-ntp
+
 - src: https://github.com/AnsibleShipyard/ansible-marathon
-  version: master
+  version: v0.5.3
   name: ansible-marathon
 
 - src: https://github.com/AnsibleShipyard/ansible-java
-  version: master
+  version: 0.1.4
   name: ansible-java
 
 - src: https://github.com/AnsibleShipyard/ansible-zookeeper
-  version: master
+  version: v0.16.2
   name: ansible-zookeeper
 
 - src: https://github.com/AnsibleShipyard/ansible-docker
-  version: master
+  version: v0.1.5
   name: ansible-docker
 
 - src: https://github.com/geerlingguy/ansible-role-haproxy
-  version: master
+  version: 1.1.0
   name: ansible-haproxy
 
 - src: https://github.com/AnsibleShipyard/ansible-mesos.git
-  version: master
+  version: v0.5.0
   name: ansible-mesos

@@ -24,8 +24,8 @@ application:
       configuration:
         configuration.values:
           output.application-pic:
-            large: "https://camo.githubusercontent.com/074c27eb3865127b2d8bc616ae16450c0f661780/68747470733a2f2f6d65736f7370686572652e636f6d2f77702d636f6e74656e742f7468656d65732f6d65736f7370686572652f6c6962726172792f696d616765732f636f6d706f6e656e74732f73657276696365732f6d61726174686f6e2e6a7067"
-            small: "http://mesosphere.github.io/presentations/mesos-nutshell-2015/assets/marathon-favicon-64x64.png"
+            large: "https://goo.gl/TCVF6C"
+            small: "https://goo.gl/9WMl0H"
             small-height: 64
     marathon:
       type: workflow.Instance

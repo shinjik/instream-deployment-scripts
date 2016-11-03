@@ -1,40 +1,40 @@
 application:
+  configuration:
+    configuration.name: "sandbox"
+  interfaces:
     configuration:
-        configuration.name: "sandbox"
-    interfaces:
+      "*": bind(application#configuration.*)
+    redis:
+      "*": bind(application#redis.*)
+    compute:
+      "*": bind(application#compute.*)
+    control:
+      "*": bind(application#control.*)
+  components:
+    application:
+      type: scripted.Component
+      configuration:
+        factory.name: Redis on marathon Factory
+        factory.launchScript:           /redis/create.py
+        factory.destroyScript:          /redis/destroy.py
+        factory.healthCheckScript:      /redis/healthCheck.py
+        factory.reconfigurationScript:  /redis/reconfigure.py
+        factory.commandScripts:
+          control.restart:            /redis/restart.py
+          control.scale:              /redis/scale.py
+      interfaces:
         configuration:
-            "*": bind(application#configuration.*)
+          name:
+            type: configuration(string)
+            name: Environment name
         redis:
-            "*": bind(application#redis.*)
+          master-hosts: publish-signal(list<string>)
+          slave-hosts:  publish-signal(list<string>)
         compute:
-            "*": bind(application#compute.*)
+          ram:        publish-signal(string)
+          cpu:        publish-signal(string)
+          disk:       publish-signal(string)
+          instances:  publish-signal(string)
         control:
-            "*": bind(application#control.*)
-    components: 
-        application:
-            type: scripted.Component 
-            configuration:
-                factory.name: Redis on marathon Factory
-                factory.launchScript:           /redis/create.py
-                factory.destroyScript:          /redis/destroy.py
-                factory.healthCheckScript:      /redis/healthCheck.py
-                factory.reconfigurationScript:  /redis/reconfigure.py
-                factory.commandScripts:
-                    control.restart:            /redis/restart.py
-                    control.scale:              /redis/scale.py
-            interfaces:
-                configuration:
-                    name:
-                      type: configuration(string)
-                      name: Environment name
-                redis:
-                    master-hosts: publish-signal(list<string>)
-                    slave-hosts:  publish-signal(list<string>)
-                compute:
-                    ram:        publish-signal(string)
-                    cpu:        publish-signal(string)
-                    disk:       publish-signal(string)
-                    instances:  publish-signal(string)
-                control:
-                    restart:    receive-command()
-                    scale:      receive-command(int instances)
+          restart:    receive-command()
+          scale:      receive-command(int instances)

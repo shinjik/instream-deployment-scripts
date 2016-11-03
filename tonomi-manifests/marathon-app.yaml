@@ -1,77 +1,77 @@
 application:
+  configuration:
+    configuration.group: ''
+    configuration.name: ''
+    configuration.cmd: ''
+    configuration.cpu: '0.5'
+    configuration.ram: 256
+    configuration.disk: 0
+    configuration.instances: 1
+    configuration.imageId: ''
+    configuration.portMappings: [{"containerPort": 0, "hostPort": 0, "servicePort": 0}]
+    configuration.labels: [{"label": "value"}]
+  interfaces:
     configuration:
-        configuration.group: ''
-        configuration.name: ''
-        configuration.cmd: ''
-        configuration.cpu: '0.5'
-        configuration.ram: 256
-        configuration.disk: 0
-        configuration.instances: 1
-        configuration.imageId: ''
-        configuration.portMappings: [{"containerPort": 0, "hostPort": 0, "servicePort": 0}]
-        configuration.labels: [{"label": "value"}]
-    interfaces:
+      "*": bind(application#configuration.*)
+    compute:
+      "*": bind(application#compute.*)
+    instances:
+      "*": bind(application#instances.*)
+    control:
+      "*": bind(application#control.*)
+  components:
+    application:
+      type: scripted.Component
+      configuration:
+        factory.name: Marathon Application Factory
+        factory.launchScript:           /marathon/create.py
+        factory.destroyScript:          /marathon/destroy.py
+        factory.healthCheckScript:      /marathon/healthCheck.py
+        factory.reconfigurationScript:  /marathon/reconfigure.py
+        factory.commandScripts:
+          control.restart:            /marathon/restart.py
+          control.scale:              /marathon/scale.py
+      interfaces:
         configuration:
-            "*": bind(application#configuration.*)
+          group:
+            type: configuration(string)
+            name: Marathon group for application (uses root group if empty)
+          name:
+            type: configuration(string)
+            name: Name (must be same as Instance Name)
+          cmd:
+            type: configuration(string)
+            name: Command
+          cpu:
+            type: configuration(string)
+            name: CPU
+          ram:
+            type: configuration(int)
+            name: RAM
+          disk:
+            type: configuration(int)
+            name: Disk
+          instances:
+            type: configuration(int)
+            name: Instances
+          imageId:
+            type: configuration(string)
+            name: Docker image
+          portMappings:
+            type: configuration(list<map<string, int>>)
+            name: Port mappings
+          labels:
+            type: configuration(list<map<string, string>>)
+            name: Labels
         compute:
-            "*": bind(application#compute.*)
+          ram:          publish-signal(int)
+          cpu:          publish-signal(string)
+          disk:         publish-signal(int)
+          instances:    publish-signal(int)
+          portMappings: publish-signal(list<map<int, int>>)
+          labels:       publish-signal(list<map<string, string>>)
         instances:
-            "*": bind(application#instances.*)
+          tasks:        publish-signal(list<map<string, object>>)
         control:
-            "*": bind(application#control.*)
-    components:
-        application:
-            type: scripted.Component
-            configuration:
-                factory.name: Marathon Application Factory
-                factory.launchScript:           /marathon/create.py
-                factory.destroyScript:          /marathon/destroy.py
-                factory.healthCheckScript:      /marathon/healthCheck.py
-                factory.reconfigurationScript:  /marathon/reconfigure.py
-                factory.commandScripts:
-                    control.restart:            /marathon/restart.py
-                    control.scale:              /marathon/scale.py
-            interfaces:
-                configuration:
-                    group:
-                      type: configuration(string)
-                      name: Marathon group for application (uses root group if empty)
-                    name:
-                      type: configuration(string)
-                      name: Name (must be same as Instance Name)
-                    cmd:
-                      type: configuration(string)
-                      name: Command
-                    cpu:
-                      type: configuration(string)
-                      name: CPU
-                    ram:
-                      type: configuration(int)
-                      name: RAM
-                    disk:
-                      type: configuration(int)
-                      name: Disk
-                    instances:
-                      type: configuration(int)
-                      name: Instances
-                    imageId:
-                      type: configuration(string)
-                      name: Docker image
-                    portMappings:
-                      type: configuration(list<map<string, int>>)
-                      name: Port mappings
-                    labels:
-                      type: configuration(list<map<string, string>>)
-                      name: Labels
-                compute:
-                    ram:          publish-signal(int)
-                    cpu:          publish-signal(string)
-                    disk:         publish-signal(int)
-                    instances:    publish-signal(int)
-                    portMappings: publish-signal(list<map<int, int>>)
-                    labels:       publish-signal(list<map<string, string>>)
-                instances:
-                    tasks:        publish-signal(list<map<string, object>>)
-                control:
-                    restart:      receive-command()
-                    scale:        receive-command(int instances)
+          restart:      receive-command()
+          scale:        receive-command(int instances)

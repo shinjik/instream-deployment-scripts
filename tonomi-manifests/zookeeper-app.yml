@@ -1,35 +1,35 @@
 application:
-    interfaces:
+  interfaces:
+    configuration:
+      "*": bind(application#configuration.*)
+    zookeeper:
+      "*": bind(application#zookeeper.*)
+    compute:
+      "*": bind(application#compute.*)
+    control:
+      "*": bind(application#control.*)
+  components:
+    application:
+      type: scripted.Component
+      configuration:
+        factory.name: Zookeeper on marathon Factory
+        factory.launchScript:           /zookeeper/create.py
+        factory.destroyScript:          /zookeeper/destroy.py
+        factory.healthCheckScript:      /zookeeper/healthCheck.py
+        factory.reconfigurationScript:  /zookeeper/reconfigure.py
+        factory.commandScripts:
+          control.restart:            /zookeeper/restart.py
+          control.scale:              /zookeeper/scale.py
+      interfaces:
         configuration:
-            "*": bind(application#configuration.*)
+          name: configuration(string)
         zookeeper:
-            "*": bind(application#zookeeper.*)
+          zookeeper-hosts: publish-signal(list<string>)
+          zookeeper-ports:  publish-signal(string)
         compute:
-            "*": bind(application#compute.*)
+          ram:  publish-signal(string)
+          cpu:  publish-signal(string)
+          disk: publish-signal(string)
         control:
-            "*": bind(application#control.*)
-    components: 
-        application:
-            type: scripted.Component 
-            configuration:
-                factory.name: Zookeeper on marathon Factory
-                factory.launchScript:           /zookeeper/create.py
-                factory.destroyScript:          /zookeeper/destroy.py
-                factory.healthCheckScript:      /zookeeper/healthCheck.py
-                factory.reconfigurationScript:  /zookeeper/reconfigure.py
-                factory.commandScripts:
-                    control.restart:            /zookeeper/restart.py
-                    control.scale:              /zookeeper/scale.py
-            interfaces:
-                configuration:
-                    name: configuration(string)
-                zookeeper:
-                    zookeeper-hosts: publish-signal(list<string>)
-                    zookeeper-ports:  publish-signal(string)
-                compute:
-                    ram:  publish-signal(string)
-                    cpu:  publish-signal(string)
-                    disk: publish-signal(string)
-                control:
-                    restart: receive-command()
-                    scale:   receive-command(int instances)
+          restart: receive-command()
+          scale:   receive-command(int instances)

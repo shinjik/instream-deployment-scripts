@@ -1,45 +1,45 @@
 application:
+  configuration:
+    configuration.name: "sandbox"
+    configuration.applicationUrl: "link"
+  interfaces:
     configuration:
-        configuration.name: "sandbox"
-        configuration.applicationUrl: "link"
-    interfaces:
+      "*": bind(application#configuration.*)
+    ui:
+      "*": bind(application#ui.*)
+    compute:
+      "*": bind(application#compute.*)
+    control:
+      "*": bind(application#control.*)
+  components:
+    application:
+      type: scripted.Component
+      configuration:
+        factory.name: ISP web UI on marathon Factory
+        factory.launchScript:           /webui/create.py
+        factory.destroyScript:          /webui/destroy.py
+        factory.healthCheckScript:      /webui/healthCheck.py
+        factory.reconfigurationScript:  /webui/reconfigure.py
+        factory.commandScripts:
+            control.restart:            /webui/restart.py
+            control.scale:              /webui/scale.py
+      interfaces:
         configuration:
-            "*": bind(application#configuration.*)
+          name:
+            type: configuration(string)
+            name: Environment name
+          applicationUrl:
+            type: configuration(string)
+            name: S3 link
         ui:
-            "*": bind(application#ui.*)
+          link:               publish-signal(string)
+          load-balancer-port: publish-signal(string)
+          hosts:              publish-signal(list<string>)
         compute:
-            "*": bind(application#compute.*)
+          ram:        publish-signal(string)
+          cpu:        publish-signal(string)
+          disk:       publish-signal(string)
+          instances:  publish-signal(string)
         control:
-            "*": bind(application#control.*)
-    components:
-        application:
-            type: scripted.Component
-            configuration:
-                factory.name: ISP web UI on marathon Factory
-                factory.launchScript:           /webui/create.py
-                factory.destroyScript:          /webui/destroy.py
-                factory.healthCheckScript:      /webui/healthCheck.py
-                factory.reconfigurationScript:  /webui/reconfigure.py
-                factory.commandScripts:
-                    control.restart:            /webui/restart.py
-                    control.scale:              /webui/scale.py
-            interfaces:
-                configuration:
-                    name:
-                      type: configuration(string)
-                      name: Environment name
-                    applicationUrl:
-                      type: configuration(string)
-                      name: S3 link
-                ui:
-                    link:               publish-signal(string)
-                    load-balancer-port: publish-signal(string)
-                    hosts:              publish-signal(list<string>)
-                compute:
-                    ram:        publish-signal(string)
-                    cpu:        publish-signal(string)
-                    disk:       publish-signal(string)
-                    instances:  publish-signal(string)
-                control:
-                    restart:  receive-command()
-                    scale:    receive-command(int instances)
+          restart:  receive-command()
+          scale:    receive-command(int instances)

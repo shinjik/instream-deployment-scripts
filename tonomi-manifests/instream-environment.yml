@@ -1,69 +1,69 @@
 application:
+  configuration:
+    configuration.name: "test"
+  interfaces:
     configuration:
-        configuration.name: "test"
-    interfaces:
+      "*": bind(application#configuration.*)
+    zookeeper:
+      "*": bind(application#zookeeper.*)
+    redis:
+      "*": bind(application#redis.*)
+    cassandra:
+      "*": bind(application#cassandra.*)
+    kafka:
+      "*": bind(application#kafka.*)
+    webui:
+      "*": bind(application#webui.*)
+    spark:
+      "*": bind(application#spark.*)
+    application-entrypoint:
+      "*": bind(application#application-entrypoint.*)
+    control:
+      "*": bind(application#control.*)
+  components:
+    application:
+      type: scripted.Component
+      configuration:
+        factory.name: In-stream environment on marathon Factory
+        factory.launchScript:           /isp-environment/create.py
+        factory.destroyScript:          /isp-environment/destroy.py
+        factory.healthCheckScript:      /isp-environment/healthCheck.py
+        factory.reconfigurationScript:  /isp-environment/reconfigure.py
+        factory.commandScripts:
+          control.restart:            /isp-environment/restart.py
+          control.scale:              /isp-environment/scale.py
+      interfaces:
         configuration:
-            "*": bind(application#configuration.*)
+          name:
+            type: configuration(string)
+            name: Environment name
         zookeeper:
-            "*": bind(application#zookeeper.*)
+          zookeeper-hosts: publish-signal(list<string>)
+          zookeeper-port:  publish-signal(string)
         redis:
-            "*": bind(application#redis.*)
+          master-hosts: publish-signal(list<string>)
+          slave-hosts:  publish-signal(list<string>)
+          port:         publish-signal(string)
         cassandra:
-            "*": bind(application#cassandra.*)
+          seed-hosts: publish-signal(list<string>)
+          node-hosts: publish-signal(list<string>)
+          jmx-port:                       publish-signal(string)
+          internode-communication-port:   publish-signal(string)
+          tls-internode-commucation-port: publish-signal(string)
+          thrift-client-port:             publish-signal(string)
+          cql-native-port:                publish-signal(string)
         kafka:
-            "*": bind(application#kafka.*)
+          kafka-hosts:  publish-signal(list<string>)
+          kafka-port:   publish-signal(string)
         webui:
-            "*": bind(application#webui.*)
+          load-balancer-port: publish-signal(string)
+          link:               publish-signal(string)
+          hosts:              publish-signal(list<string>)
+          port:               publish-signal(string)
         spark:
-            "*": bind(application#spark.*)
+          hosts:              publish-signal(list<string>)
+          web-interface: publish-signal(string)
         application-entrypoint:
-            "*": bind(application#application-entrypoint.*)
+          URL: publish-signal(string)
         control:
-            "*": bind(application#control.*)
-    components:
-        application:
-            type: scripted.Component
-            configuration:
-                factory.name: In-stream environment on marathon Factory
-                factory.launchScript:           /isp-environment/create.py
-                factory.destroyScript:          /isp-environment/destroy.py
-                factory.healthCheckScript:      /isp-environment/healthCheck.py
-                factory.reconfigurationScript:  /isp-environment/reconfigure.py
-                factory.commandScripts:
-                    control.restart:            /isp-environment/restart.py
-                    control.scale:              /isp-environment/scale.py
-            interfaces:
-                configuration:
-                    name:
-                      type: configuration(string)
-                      name: Environment name
-                zookeeper:
-                    zookeeper-hosts: publish-signal(list<string>)
-                    zookeeper-port:  publish-signal(string)
-                redis:
-                    master-hosts: publish-signal(list<string>)
-                    slave-hosts:  publish-signal(list<string>)
-                    port:         publish-signal(string)
-                cassandra:
-                    seed-hosts: publish-signal(list<string>)
-                    node-hosts: publish-signal(list<string>)
-                    jmx-port:                       publish-signal(string)
-                    internode-communication-port:   publish-signal(string)
-                    tls-internode-commucation-port: publish-signal(string)
-                    thrift-client-port:             publish-signal(string)
-                    cql-native-port:                publish-signal(string)
-                kafka:
-                    kafka-hosts:  publish-signal(list<string>)
-                    kafka-port:   publish-signal(string)
-                webui:
-                    load-balancer-port: publish-signal(string)
-                    link:               publish-signal(string)
-                    hosts:              publish-signal(list<string>)
-                    port:               publish-signal(string)
-                spark:
-                    hosts:              publish-signal(list<string>)
-                    web-interface: publish-signal(string)
-                application-entrypoint:
-                    URL: publish-signal(string)
-                control:
-                    restart: receive-command()
+          restart: receive-command()

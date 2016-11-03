@@ -1,40 +1,40 @@
 application:
+  configuration:
+    configuration.name: "sandbox"
+  interfaces:
     configuration:
-        configuration.name: "sandbox"
-    interfaces:
+      "*": bind(application#configuration.*)
+    kafka:
+      "*": bind(application#kafka.*)
+    compute:
+      "*": bind(application#compute.*)
+    control:
+      "*": bind(application#control.*)
+  components:
+    application:
+      type: scripted.Component
+      configuration:
+        factory.name: Kafka on marathon Factory
+        factory.launchScript:           /kafka/create.py
+        factory.destroyScript:          /kafka/destroy.py
+        factory.healthCheckScript:      /kafka/healthCheck.py
+        factory.reconfigurationScript:  /kafka/reconfigure.py
+        factory.commandScripts:
+            control.restart:            /kafka/restart.py
+            control.scale:              /kafka/scale.py
+      interfaces:
         configuration:
-            "*": bind(application#configuration.*)
+          name:
+            type: configuration(string)
+            name: Environment name
         kafka:
-            "*": bind(application#kafka.*)
+          kafka-hosts: publish-signal(list<string>)
+          kafka-port:  publish-signal(string)
         compute:
-            "*": bind(application#compute.*)
+          ram:        publish-signal(string)
+          cpu:        publish-signal(string)
+          disk:       publish-signal(string)
+          instances:  publish-signal(string)
         control:
-            "*": bind(application#control.*)
-    components: 
-        application:
-            type: scripted.Component 
-            configuration:
-                factory.name: Kafka on marathon Factory
-                factory.launchScript:           /kafka/create.py
-                factory.destroyScript:          /kafka/destroy.py
-                factory.healthCheckScript:      /kafka/healthCheck.py
-                factory.reconfigurationScript:  /kafka/reconfigure.py
-                factory.commandScripts:
-                    control.restart:            /kafka/restart.py
-                    control.scale:              /kafka/scale.py
-            interfaces:
-                configuration:
-                    name:
-                      type: configuration(string)
-                      name: Environment name
-                kafka:
-                    kafka-hosts: publish-signal(list<string>)
-                    kafka-port:  publish-signal(string)
-                compute:
-                    ram:        publish-signal(string)
-                    cpu:        publish-signal(string)
-                    disk:       publish-signal(string)
-                    instances:  publish-signal(string)
-                control:
-                    restart:    receive-command()
-                    scale:      receive-command(int instances)
+          restart:    receive-command()
+          scale:      receive-command(int instances)

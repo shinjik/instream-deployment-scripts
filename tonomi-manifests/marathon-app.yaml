@@ -1,13 +1,15 @@
 application:
     configuration:
-        configuration.name: "sandbox"
-        configuration.cpu: "0.5"
+        configuration.group: ''
+        configuration.name: ''
+        configuration.cmd: ''
+        configuration.cpu: '0.5'
         configuration.ram: 256
-        configuration.disk: 256
+        configuration.disk: 0
         configuration.instances: 1
-        configuration.imageId: ""
-        configuration.portMappings: []
-        configuration.cmd: ""
+        configuration.imageId: ''
+        configuration.portMappings: [{"containerPort": 0, "hostPort": 0, "servicePort": 0}]
+        configuration.labels: [{"label": "value"}]
     interfaces:
         configuration:
             "*": bind(application#configuration.*)
@@ -17,9 +19,9 @@ application:
             "*": bind(application#instances.*)
         control:
             "*": bind(application#control.*)
-    components: 
+    components:
         application:
-            type: scripted.Component 
+            type: scripted.Component
             configuration:
                 factory.name: Marathon Application Factory
                 factory.launchScript:           /marathon/create.py
@@ -31,6 +33,15 @@ application:
                     control.scale:              /marathon/scale.py
             interfaces:
                 configuration:
+                    group:
+                      type: configuration(string)
+                      name: Marathon group for application (uses root group if empty)
+                    name:
+                      type: configuration(string)
+                      name: Name (must be same as Instance Name)
+                    cmd:
+                      type: configuration(string)
+                      name: Command
                     cpu:
                       type: configuration(string)
                       name: CPU
@@ -47,20 +58,19 @@ application:
                       type: configuration(string)
                       name: Docker image
                     portMappings:
-                      type: configuration(list<map<string, string>>)
+                      type: configuration(list<map<string, int>>)
                       name: Port mappings
-                    cmd:
-                      type: configuration(string)
-                      name: Command
-                    name:
-                      type: configuration(string)
-                      name: Name
+                    labels:
+                      type: configuration(list<map<string, string>>)
+                      name: Labels
                 compute:
-                    ram:          publish-signal(string)
+                    ram:          publish-signal(int)
                     cpu:          publish-signal(string)
-                    instances:    publish-signal(string)
-                    portMappings: publish-signal(map<string, string>)
-                instances: 
+                    disk:         publish-signal(int)
+                    instances:    publish-signal(int)
+                    portMappings: publish-signal(list<map<string, int>>)
+                    labels:       publish-signal(list<map<string, string>>)
+                instances:
                     tasks:        publish-signal(list<map<string, object>>)
                 control:
                     restart:      receive-command()

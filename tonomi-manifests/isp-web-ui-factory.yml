@@ -2,8 +2,8 @@ application:
     interfaces:
         component:
             "*": bind(factory#component.*)
-        web-ui:
-            web-ui-by-id: bind(factory#factory.instances)
+        webui:
+            webui-by-id: bind(factory#factory.instances)
         configuration:
             "*": bind(factory#configuration.*)
     configuration:

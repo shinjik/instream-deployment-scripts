@@ -12,8 +12,8 @@ application:
             "*": bind(application#cassandra.*)
         kafka:
             "*": bind(application#kafka.*)
-        web-ui:
-            "*": bind(application#web-ui.*)
+        webui:
+            "*": bind(application#webui.*)
         spark:
             "*": bind(application#spark.*)
         application-entrypoint:
@@ -43,6 +43,7 @@ application:
                 redis:
                     master-hosts: publish-signal(list<string>)
                     slave-hosts:  publish-signal(list<string>)
+                    port:         publish-signal(string)
                 cassandra:
                     seed-hosts: publish-signal(list<string>)
                     node-hosts: publish-signal(list<string>)
@@ -52,14 +53,16 @@ application:
                     thrift-client-port:             publish-signal(string)
                     cql-native-port:                publish-signal(string)
                 kafka:
-                    kafka-hosts: publish-signal(list<string>)
-                    kafka-port: publish-signal(string)
-                web-ui:
-                    endpoints: publish-signal(list<string>)
-                    URL:       publish-signal(string)
+                    kafka-hosts:  publish-signal(list<string>)
+                    kafka-port:   publish-signal(string)
+                webui:
+                    load-balancer-port: publish-signal(string)
+                    link:               publish-signal(string)
+                    hosts:              publish-signal(list<string>)
+                    port:               publish-signal(string)
                 spark:
                     hosts:              publish-signal(list<string>)
-                    load-balancer-port: publish-signal(string)
+                    web-interface: publish-signal(string)
                 application-entrypoint:
                     URL: publish-signal(string)
                 control:

@@ -7,16 +7,18 @@ from yaml.representer import SafeRepresenter
 from marathon import MarathonClient
 
 # to serialize defaultdicts normally
-SafeRepresenter.add_representer(defaultdict, SafeRepresenter.represent_dict)
-
-
-def multidict():
-  return defaultdict(multidict)
+# SafeRepresenter.add_representer(defaultdict, SafeRepresenter.represent_dict)
+#
+#
+# def multidict():
+#   return defaultdict(multidict)
 
 
 args = yaml.safe_load(sys.stdin)
 marathon_url = args.get('configuration', {}).get('configuration.marathonURL')
 marathon_client = MarathonClient(marathon_url)
+
+marathon_node_hostname = marathon_url.split(':')[1][2:]
 
 env_statuses = {}
 
@@ -43,15 +45,8 @@ for tonomi_env_name in args.get('instances', {}).keys():
 
     env = marathon_client.get_group(tonomi_env_name)
 
-    interfaces = {
-      'application-entrypoint': {
-        'signals': {
-          'URL': 'https://host123.com' #ui.tasks[0].host
-        }
-      }
-    }
-
-    components = multidict()
+    interfaces = {}
+    components = {}  # multidict()
 
     for app in env.apps:
       env_name = env.id.replace('/', '')
@@ -62,15 +57,23 @@ for tonomi_env_name in args.get('instances', {}).keys():
       if app_type == 'zookeeper':
         interfaces[app_type] = {
           'signals': {
-            'zookeeper-hosts': ['123', '123'],
+            'zookeeper-hosts': [],
             'zookeeper-port': app.env['ZOO_PORT']
+          }
+        }
+      elif app_type == 'redis':
+        interfaces[app_type] = {
+          'signals': {
+            'master-hosts': [],
+            'slave-hosts': [],
+            'port': app.env['REDIS_PORT']
           }
         }
       elif app_type == 'cassandra':
         interfaces[app_type] = {
           'signals': {
-            'seed-hosts': '123',
-            'node-hosts': '123',
+            'seed-hosts': [],
+            'node-hosts': [],
             'jmx-port': app.labels['_jmx_port'],
             'internode-communication-port': app.labels['_internode_communication_port'],
             'tls-internode-commucation-port': app.labels['_tls_internode_communication_port'],
@@ -86,11 +89,29 @@ for tonomi_env_name in args.get('instances', {}).keys():
           }
         }
       elif app_type == 'webui':
+        service_port = str(app.container.docker.port_mappings[0].service_port)
+
         interfaces[app_type] = {
           'signals': {
-            'link': '123',
-            'load-balancer-port': '123',
-            'hosts': '123'
+            'load-balancer-port': service_port,
+            'link': 'http://{}:{}'.format(marathon_node_hostname, service_port),
+            'hosts': [task.host for task in app.tasks]
+          }
+        }
+
+        interfaces['application-entrypoint'] = {
+          'signals': {
+            'URL': 'http://{}:{}'.format(marathon_node_hostname, service_port)
+          }
+        }
+
+      elif app_type == 'spark':
+        service_port = app.container.docker.port_mappings[2].service_port
+
+        interfaces[app_type] = {
+          'signals': {
+            'hosts': [task.host for task in app.tasks],
+            'web-interface': 'http://{}:{}'.format(marathon_node_hostname, service_port)
           }
         }
 
@@ -120,4 +141,4 @@ for tonomi_env_name in args.get('instances', {}).keys():
       }
     }
 
-yaml.safe_dump({ 'instances': env_statuses }, sys.stdout)
+yaml.safe_dump({'instances': env_statuses}, sys.stdout)

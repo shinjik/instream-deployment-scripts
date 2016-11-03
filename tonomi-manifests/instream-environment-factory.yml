@@ -24,8 +24,8 @@ application:
                     cassandra-by-id: consume-signal(map<string,string>)
                 kafka:
                     kafka-by-id:     consume-signal(map<string,string>)
-                web-ui:
-                    web-ui-by-id:    consume-signal(map<string,string>)
+                webui:
+                    webui-by-id:     consume-signal(map<string,string>)
                 spark:
                     spark-by-id:     consume-signal(map<string,string>)
                 isp-environments:
@@ -55,11 +55,11 @@ application:
             interfaces:
                 apps:
                     kafka-by-id: publish-signal(map<string,string>)
-        web-ui:
+        webui:
             type: reference.Service
             interfaces:
                 apps:
-                    web-ui-by-id: publish-signal(map<string,string>)
+                    webui-by-id: publish-signal(map<string,string>)
         spark:
             type: reference.Service
             interfaces:
@@ -70,6 +70,6 @@ application:
         - [factory, redis]
         - [factory, cassandra]
         - [factory, kafka]
-        - [factory, web-ui]
+        - [factory, webui]
         - [factory, spark]
         - [factory, scripting]

@@ -4,23 +4,20 @@ import sys
 import json
 import yaml
 from marathon import MarathonClient
+from lambdas import *
 
-args = yaml.safe_load(sys.stdin)
-marathon_url = args.get('configuration', {}).get('configuration.marathonURL')
-marathon_client = MarathonClient(marathon_url)
+args = parse_args()
+marathon_client = get_marathon_client(args)
+instances = {}
 
-instance_results = {}
-
-for tonomi_instance_name in args.get('instances', {}).keys():
-  command_id = list(args.get('instances', {}).get(tonomi_instance_name).get('commands').keys())[0]
-
-  instances_number = args.get('instances', {}).get(tonomi_instance_name).get('commands').get(command_id) \
-    .get('control').get('scale').get('instances')
+for instance_name, app in args['instances'].items():
+  command_id, command_info = next(iter(app['commands'].items()))
+  instances_num = command_info['control']['scale']['instances']
 
   try:
-    marathon_client.scale_app(tonomi_instance_name, instances_number, force=True)
+    marathon_client.scale_app(instance_name, instances_num, force=True)
 
-    instance_results[tonomi_instance_name] = {
+    instances[instance_name] = {
       '$pushAll': {
         'commands.{}'.format(command_id): [
           {'$intermediate': True},
@@ -33,7 +30,7 @@ for tonomi_instance_name in args.get('instances', {}).keys():
       }
     }
   except:
-    instance_results[tonomi_instance_name] = {
+    instances[instance_name] = {
       '$pushAll': {
         'commands.{}'.format(command_id): [
           {'$intermediate': True},
@@ -47,4 +44,4 @@ for tonomi_instance_name in args.get('instances', {}).keys():
       }
     }
 
-yaml.safe_dump({'instances': instance_results}, sys.stdout)
+return_instances_info(instances)

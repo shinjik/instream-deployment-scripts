@@ -2,27 +2,17 @@
 
 import sys
 import yaml
-from collections import defaultdict
-from yaml.representer import SafeRepresenter
 from marathon import MarathonClient
+from lambdas import *
 
-# to serialize defaultdicts normally
-# SafeRepresenter.add_representer(defaultdict, SafeRepresenter.represent_dict)
-#
-#
-# def multidict():
-#   return defaultdict(multidict)
-
-
-args = yaml.safe_load(sys.stdin)
-marathon_url = args.get('configuration', {}).get('configuration.marathonURL')
-marathon_client = MarathonClient(marathon_url)
+args = parse_args()
+marathon_client = get_marathon_client(args)
 
 marathon_node_hostname = marathon_url.split(':')[1][2:]
 
-env_statuses = {}
+instances = {}
 
-for tonomi_env_name in args.get('instances', {}).keys():
+for tonomi_env_name in args['instances'].keys():
 
   envs = []
   # for app in marathon_client.list_apps():
@@ -122,7 +112,7 @@ for tonomi_env_name in args.get('instances', {}).keys():
         }
       }
 
-    env_statuses[tonomi_env_name] = {
+    instances[tonomi_env_name] = {
       'instanceId': tonomi_env_name,
       'name': tonomi_env_name,
       'status': status,
@@ -131,7 +121,7 @@ for tonomi_env_name in args.get('instances', {}).keys():
     }
 
   else:
-    env_statuses[tonomi_env_name] = {
+    instances[tonomi_env_name] = {
       'status': {
         'flags': {
           'active': False,
@@ -141,4 +131,4 @@ for tonomi_env_name in args.get('instances', {}).keys():
       }
     }
 
-yaml.safe_dump({'instances': env_statuses}, sys.stdout)
+return_instances_info(instances)

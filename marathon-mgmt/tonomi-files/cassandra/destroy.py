@@ -4,17 +4,17 @@ import sys
 import yaml
 from marathon import MarathonClient
 from cassandra import *
+from lambdas import *
 
-args = yaml.safe_load(sys.stdin)
-marathon_url = args.get('configuration', {}).get('configuration.marathonURL')
-marathon_client = MarathonClient(marathon_url)
+args = parse_args()
+marathon_client = get_marathon_client(args)
 
-instance_results = {}
+instances = {}
 
-for tonomi_cluster_name in args.get('instances', {}).keys():
-  CassandraCluster.delete_cluster(tonomi_cluster_name, marathon_client)
+for instance_name in args['instances'].keys():
+  CassandraCluster.delete_cluster(instance_name, marathon_client)
 
-  instance_results[tonomi_cluster_name] = {
+  instances[instance_name] = {
     '$set': {
       'status.flags.converging': False,
       'status.flags.active': False,
@@ -22,4 +22,4 @@ for tonomi_cluster_name in args.get('instances', {}).keys():
     }
   }
 
-yaml.safe_dump({'instances': instance_results}, sys.stdout)
+return_instances_info(instances)

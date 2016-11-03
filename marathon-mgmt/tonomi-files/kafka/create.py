@@ -4,14 +4,14 @@ import sys
 import yaml
 from marathon import MarathonClient
 from kafka import *
+from lambdas import *
 
-args = yaml.safe_load(sys.stdin)
-marathon_url = args.get('configuration', {}).get('configuration.marathonURL')
-marathon_client = MarathonClient(marathon_url)
+args = parse_args()
+marathon_client = get_marathon_client(args)
 
-instance_results = {}
+instances = {}
 
-for tonomi_cluster_id, app in args.get('launch-instances', {}).items():
+for instance_id, app in args['launch-instances'].items():
   configuration = app.get('configuration')
   env_name = configuration.get('configuration.name')
   tonomi_cluster_name = '/{}/kafka'.format(env_name)
@@ -24,8 +24,8 @@ for tonomi_cluster_id, app in args.get('launch-instances', {}).items():
   kafka_app = KafkaCluster(env_name, zookeeper_host, zookeeper_port, marathon_client)
   kafka_app.create()
 
-  instance_results[tonomi_cluster_name] = {
-    'instanceId': tonomi_cluster_id,
+  instances[tonomi_cluster_name] = {
+    'instanceId': instance_id,
     'name': tonomi_cluster_name,
     '$set': {
       'status.flags.converging': True,
@@ -43,4 +43,4 @@ for tonomi_cluster_id, app in args.get('launch-instances', {}).items():
   #     }
   #   }
 
-yaml.safe_dump({'instances': instance_results}, sys.stdout)
+return_instances_info(instances)

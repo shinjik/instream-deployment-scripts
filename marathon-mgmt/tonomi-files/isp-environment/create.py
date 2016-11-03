@@ -12,19 +12,17 @@ from kafka import *
 from redis import *
 from webui import *
 from spark import *
+from lambdas import *
 import time
 
+args = parse_args()
+marathon_client = get_marathon_client(args)
 
-args = yaml.safe_load(sys.stdin)
-marathon_url = args.get('configuration', {}).get('configuration.marathonURL', '')
+instances = {}
 
-marathon_client = MarathonClient(marathon_url)
-
-instance_results = {}
-
-for env_id, env in args.get('launch-instances', {}).items():
-  configuration = env.get('configuration')
-  env_name = env.get('configuration').get('configuration.name')
+for env_id, env in args['launch-instances'].items():
+  configuration = env['configuration']
+  env_name = env['configuration']['configuration.name']
 
   # 1. zookeeper cluster
   zookeeper_cluster = ZookeeperCluster(env_name, marathon_client)
@@ -57,7 +55,7 @@ for env_id, env in args.get('launch-instances', {}).items():
   spark_app = SparkCluster(env_name, marathon_client)
   spark_app.create()
 
-  instance_results[env_name] = {
+  instances[env_name] = {
     'instanceId': env_id,
     'name': env_name,
     '$set': {
@@ -66,4 +64,4 @@ for env_id, env in args.get('launch-instances', {}).items():
     }
   }
 
-yaml.safe_dump({'instances': instance_results}, sys.stdout)
+return_instances_info(instances)

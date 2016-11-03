@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 
-from yaml.representer import SafeRepresenter
-from marathon import MarathonClient
 import datetime
 import sys
 import yaml
+from marathon import MarathonClient
+from lambdas import *
 
-args = yaml.safe_load(sys.stdin)
-marathon_url = args.get('configuration', {}).get('configuration.marathonURL')
-marathon_client = MarathonClient(marathon_url)
+args = parse_args()
+marathon_client = get_marathon_client(args)
 
-app_statuses = {}
+instances = {}
 
-for instance_name in sorted(list(args.get('instances', {}).keys())):
+for instance_name in sorted(list(args['instances'].keys())):
   try:
     app = marathon_client.get_app(instance_name)
 
@@ -53,7 +52,7 @@ for instance_name in sorted(list(args.get('instances', {}).keys())):
       }
     }
 
-    app_statuses[instance_name] = {
+    instances[instance_name] = {
       'instanceId': instance_name,
       'name': instance_name,
       'status': status,
@@ -62,7 +61,7 @@ for instance_name in sorted(list(args.get('instances', {}).keys())):
     }
 
   except:
-    app_statuses[instance_name] = {
+    instances[instance_name] = {
       'status': {
         'flags': {
           'active': False,
@@ -72,4 +71,4 @@ for instance_name in sorted(list(args.get('instances', {}).keys())):
       }
     }
 
-yaml.safe_dump({'instances': app_statuses}, sys.stdout)
+return_instances_info(instances)

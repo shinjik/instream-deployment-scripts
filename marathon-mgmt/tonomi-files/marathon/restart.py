@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 
-from marathon import MarathonClient
 import sys
 import json
 import yaml
+from marathon import MarathonClient
+from lambdas import *
 
-args = yaml.safe_load(sys.stdin)
-marathon_url = args['configuration']['configuration.marathonURL']
-marathon_client = MarathonClient(marathon_url)
+args = parse_args()
+marathon_client = get_marathon_client(args)
 
-instance_results = {}
+instances = {}
 
 for instance_name, instance in args['instances'].items():
   command_id = next(iter(instance['commands'].items()))[0]
   marathon_client.restart_app(instance_name)
 
-  instance_results[instance_name] = {
+  instances[instance_name] = {
     '$pushAll': {
       'commands.{}'.format(command_id): [
         {'$intermediate': True},
@@ -28,4 +28,4 @@ for instance_name, instance in args['instances'].items():
     }
   }
 
-yaml.safe_dump({'instances': instance_results}, sys.stdout)
+return_instances_info(instances)

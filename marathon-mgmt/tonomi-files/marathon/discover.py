@@ -1,19 +1,18 @@
 #!/usr/bin/env python3
 
-from marathon import MarathonClient
 import sys
 import json
-import requests
 import yaml
+from marathon import MarathonClient
+from lambdas import *
 
-args = yaml.safe_load(sys.stdin)
-marathon_url = args['configuration']['configuration.marathonURL']
-marathon_client = MarathonClient(marathon_url)
+args = parse_args()
+marathon_client = get_marathon_client(args)
 
-instance_results = {}
+instances = {}
 
 for app in marathon_client.list_apps():
-  instance_results[app.id] = {
+  instances[app.id] = {
     'name': app.id,
     'interfaces': {
       'info': {
@@ -24,4 +23,4 @@ for app in marathon_client.list_apps():
     }
   }
 
-yaml.safe_dump({'instances': instance_results}, sys.stdout)
+return_instances_info(instances)

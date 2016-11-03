@@ -3,15 +3,13 @@
 import sys
 import yaml
 from marathon import MarathonClient
+from lambdas import *
 
+args = parse_args()
+marathon_client = get_marathon_client(args)
+instances = {}
 
-args = yaml.safe_load(sys.stdin)
-marathon_url = args.get('configuration', {}).get('configuration.marathonURL', '')
-marathon_client = MarathonClient(marathon_url)
-
-instance_results = {}
-
-for env_id in args.get('instances', {}).keys():
+for env_id in args['instances'].keys():
   for app in marathon_client.list_apps():
     if ('_tonomi_environment', env_id) in app.labels.items():
       try:
@@ -24,6 +22,6 @@ for env_id in args.get('instances', {}).keys():
   except:
     pass
 
-  instance_results[env_id] = {}
+  instances[env_id] = {}
 
-yaml.safe_dump({ 'instances': instance_results }, sys.stdout)
+return_instances_info(instances)

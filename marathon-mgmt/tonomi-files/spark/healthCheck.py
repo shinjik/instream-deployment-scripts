@@ -2,26 +2,16 @@
 
 import sys
 import yaml
-from collections import defaultdict
-from yaml.representer import SafeRepresenter
 from marathon import MarathonClient
+from lambdas import *
 
-# to serialize defaultdicts normally
-SafeRepresenter.add_representer(defaultdict, SafeRepresenter.represent_dict)
+args = parse_args()
+marathon_client = get_marathon_client(args)
+instances = {}
 
-def multidict():
-  return defaultdict(multidict)
-
-args = yaml.safe_load(sys.stdin)
-marathon_url = args.get('configuration', {}).get('configuration.marathonURL')
-marathon_client = MarathonClient(marathon_url)
-
-app_statuses = {}
-
-for tonomi_cluster_instance_name in args.get('instances', {}).keys():
-
+for instance_name in args['instances'].keys():
   try:
-    app = marathon_client.get_app(tonomi_cluster_instance_name)
+    app = marathon_client.get_app(instance_name)
 
     status = {
       'flags': {
@@ -48,7 +38,7 @@ for tonomi_cluster_instance_name in args.get('instances', {}).keys():
       }
     }
 
-    components = multidict()
+    components = {}
     components['spark-worker'] = {
       'reference': {
         'mapping': 'apps.app-by-id',
@@ -56,15 +46,15 @@ for tonomi_cluster_instance_name in args.get('instances', {}).keys():
       }
     }
 
-    app_statuses[tonomi_cluster_instance_name] = {
-      'instanceId': tonomi_cluster_instance_name,
-      'name': tonomi_cluster_instance_name,
+    instances[instance_name] = {
+      'instanceId': instance_name,
+      'name': instance_name,
       'status': status,
       'interfaces': interfaces,
       'components': components,
     }
   except:
-    app_statuses[tonomi_cluster_instance_name] = {
+    instances[instance_name] = {
       'status': {
         'flags': {
           'active': False,
@@ -74,5 +64,4 @@ for tonomi_cluster_instance_name in args.get('instances', {}).keys():
       }
     }
 
-yaml.safe_dump({'instances': app_statuses}, sys.stdout)
-
+return_instances_info(instances)

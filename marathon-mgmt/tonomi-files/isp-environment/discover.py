@@ -3,14 +3,11 @@
 import sys
 import yaml
 from marathon import MarathonClient
+from lambdas import *
 
-args = yaml.safe_load(sys.stdin)
-marathon_url = args.get('configuration', {}).get('configuration.marathonURL')
-
-marathon_client = MarathonClient(marathon_url)
-
-result = {'instances': {}}
-
+args = parse_args()
+marathon_client = get_marathon_client(args)
+instances = {}
 envs = []
 
 for group in marathon_client.list_groups():
@@ -24,7 +21,7 @@ for app in marathon_client.list_apps():
         envs.append(value)
 
 for env_name in envs:
-  result['instances'][env_name] = {
+  instances[env_name] = {
     'name': env_name,
     'interfaces': {
       'info': {
@@ -35,4 +32,4 @@ for env_name in envs:
     }
   }
 
-yaml.safe_dump(result, sys.stdout)
+return_instances_info(instances)

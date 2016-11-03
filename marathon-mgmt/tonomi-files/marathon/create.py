@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 
-from marathon import MarathonClient
-from marathon.models import MarathonApp
-from marathon.models.container import *
 import sys
 import json
 import requests
 import yaml
+from marathon import MarathonClient
+from marathon.models import MarathonApp
+from marathon.models.container import *
+from lambdas import *
 
-args = yaml.safe_load(sys.stdin)
-marathon_url = args['configuration']['configuration.marathonURL']
-marathon_client = MarathonClient(marathon_url)
-
-instance_results = {}
+args = parse_args()
+marathon_client = get_marathon_client(args)
+instances = {}
 
 for instance_id, app in args['launch-instances'].items():
   conf = lambda x, app=app: app.get('configuration')['configuration.{}'.format(x)]
@@ -50,7 +49,7 @@ for instance_id, app in args['launch-instances'].items():
 
   marathon_client.create_app(instance_name, MarathonApp(**app_opts))
 
-  instance_results[instance_name] = {
+  instances[instance_name] = {
     'instanceId': instance_id,
     '$set': {
       'status.flags.converging': True,
@@ -58,4 +57,4 @@ for instance_id, app in args['launch-instances'].items():
     }
   }
 
-yaml.safe_dump({'instances': instance_results}, sys.stdout)
+return_instances_info(instances)

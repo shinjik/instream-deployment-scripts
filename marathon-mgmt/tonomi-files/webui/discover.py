@@ -3,26 +3,25 @@
 import sys
 import yaml
 from marathon import MarathonClient
+from lambdas import *
 
-args = yaml.safe_load(sys.stdin)
-marathon_url = args.get('configuration', {}).get('configuration.marathonURL')
-marathon_client = MarathonClient(marathon_url)
-
-result = {'instances': {}}
+args = parse_args()
+marathon_client = get_marathon_client(args)
+instances = {}
 
 for app in marathon_client.list_apps():
   if ('_tonomi_application', 'webui') in app.labels.items():
     env_name = app.labels['_tonomi_environment']
-    tonomi_app_name = '/{}/webui'.format(env_name)
-    result['instances'][tonomi_app_name] = {
-      'name': tonomi_app_name,
+    instance_name = '/{}/webui'.format(env_name)
+    instances[instance_name] = {
+      'name': instance_name,
       'interfaces': {
         'info': {
           'signals': {
-            'app-id': tonomi_app_name
+            'app-id': instance_name
           }
         }
       }
     }
 
-yaml.safe_dump(result, sys.stdout)
+return_instances_info(instances)

@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 
-from marathon import MarathonClient
 import sys
 import json
 import yaml
+from marathon import MarathonClient
+from lambdas import *
 
-args = yaml.safe_load(sys.stdin)
-marathon_url = args['configuration']['configuration.marathonURL']
-marathon_client = MarathonClient(marathon_url)
+args = parse_args()
+marathon_client = get_marathon_client(args)
 
-instance_results = {}
+instances = {}
 
 for instance_name in args['instances'].keys():
   try:
     marathon_client.delete_app(instance_name, True)
 
-    instance_results[instance_name] = {
+    instances[instance_name] = {
       '$set': {
         'status.flags.converging': False,
         'status.flags.active': False,
@@ -23,7 +23,7 @@ for instance_name in args['instances'].keys():
       }
     }
   except:
-    instance_results[instance_name] = {
+    instances[instance_name] = {
       '$set': {
         'status.flags.converging': False,
         'status.flags.active': False,
@@ -31,4 +31,4 @@ for instance_name in args['instances'].keys():
       }
     }
 
-yaml.safe_dump({'instances': instance_results}, sys.stdout)
+return_instances_info(instances)

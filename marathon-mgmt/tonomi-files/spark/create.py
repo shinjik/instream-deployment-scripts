@@ -7,28 +7,27 @@ from marathon.models import MarathonApp, MarathonConstraint
 from marathon.models.container import *
 from marathon.models.app import PortDefinition, Residency
 from spark import *
+from lambdas import *
 
-args = yaml.safe_load(sys.stdin)
-marathon_url = args.get('configuration', {}).get('configuration.marathonURL')
-marathon_client = MarathonClient(marathon_url)
+args = parse_args()
+marathon_client = get_marathon_client(args)
+instances = {}
 
-instance_results = {}
-
-for tonomi_cluster_id, app in args.get('launch-instances', {}).items():
-  configuration = app.get('configuration')
+for instance_id, app in args['launch-instances'].items():
+  configuration = app['configuration']
   env_name = configuration.get('configuration.name')
-  tonomi_cluster_name = '/{}/spark'.format(env_name)
+  instance_name = '/{}/spark'.format(env_name)
 
   spark_app = SparkCluster(env_name, marathon_client)
   spark_app.create()
 
-  instance_results[tonomi_cluster_name] = {
-    'instanceId': tonomi_cluster_id,
-    'name': tonomi_cluster_name,
+  instances[instance_name] = {
+    'instanceId': instance_id,
+    'name': instance_name,
     '$set': {
       'status.flags.converging': True,
       'status.flags.active': False
     }
   }
 
-yaml.safe_dump({'instances': instance_results}, sys.stdout)
+return_instances_info(instances)

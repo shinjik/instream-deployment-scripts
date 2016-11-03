@@ -4,21 +4,20 @@ import sys
 import yaml
 from marathon import MarathonClient
 from redis import *
+from lambdas import *
 
-args = yaml.safe_load(sys.stdin)
-marathon_url = args.get('configuration', {}).get('configuration.marathonURL')
-marathon_client = MarathonClient(marathon_url)
+args = parse_args()
+marathon_client = get_marathon_client(args)
+instances = {}
 
-instance_results = {}
+for instance_name in args['instances'].keys():
+  RedisCluster.delete_cluster(instance_name, marathon_client)
 
-for tonomi_cluster_name in args.get('instances', {}).keys():
-  RedisCluster.delete_cluster(tonomi_cluster_name, marathon_client)
-
-  instance_results[tonomi_cluster_name] = {
+  instances[instance_name] = {
     '$set': {
       'status.flags.converging': False,
       'status.flags.active': False
     }
   }
 
-yaml.safe_dump({'instances': instance_results}, sys.stdout)
+return_instances_info(instances)

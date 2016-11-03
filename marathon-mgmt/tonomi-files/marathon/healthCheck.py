@@ -1,19 +1,10 @@
 #!/usr/bin/env python3
 
-import sys
-import yaml
-import datetime
-from collections import defaultdict
 from yaml.representer import SafeRepresenter
 from marathon import MarathonClient
-
-# to serialize defaultdicts normally
-SafeRepresenter.add_representer(defaultdict, SafeRepresenter.represent_dict)
-
-
-def multidict():
-  return defaultdict(multidict)
-
+import datetime
+import sys
+import yaml
 
 args = yaml.safe_load(sys.stdin)
 marathon_url = args.get('configuration', {}).get('configuration.marathonURL')
@@ -21,11 +12,9 @@ marathon_client = MarathonClient(marathon_url)
 
 app_statuses = {}
 
-for tonomi_instance_name in sorted(list(args.get('instances', {}).keys())):
+for instance_name in sorted(list(args.get('instances', {}).keys())):
   try:
-    app = marathon_client.get_app(tonomi_instance_name)
-    if '_tonomi_environment' not in app.labels or '_tonomi_application' not in app.labels:
-      raise Exception
+    app = marathon_client.get_app(instance_name)
 
     status = {
       'flags': {
@@ -35,20 +24,9 @@ for tonomi_instance_name in sorted(list(args.get('instances', {}).keys())):
       }
     }
 
-    tasks = []
-    for task in app.tasks:
-      t = {
-        'taskId': task.id,
-        'host': task.host,
-        'state': task.state
-      }
-      # if app.container.docker:
-      #   t['portMappings'] = { str(p.container_port): str(task.ports) for p in app.container.docker.port_mappings }
-      # else:
-      #   t['ports'] = task.ports
-      tasks.append(t)
+    tasks = [{'taskId': task.id, 'host': task.host, 'state': task.state} for task in app.tasks]
+    port_mappings = {pm.container_port: pm.service_port for pm in app.container.docker.port_mappings}
 
-    port_mappings = {str(p.container_port): str(p.service_port) for p in app.container.docker.port_mappings}
     interfaces = {
       'info': {
         'signals': {
@@ -62,8 +40,10 @@ for tonomi_instance_name in sorted(list(args.get('instances', {}).keys())):
         'signals': {
           'ram': app.mem,
           'cpu': app.cpus,
+          'disk': app.disk,
           'instances': app.instances,
-          'portMappings': port_mappings
+          'portMappings': port_mappings,
+          'labels': app.labels
         }
       },
       'instances': {
@@ -73,18 +53,16 @@ for tonomi_instance_name in sorted(list(args.get('instances', {}).keys())):
       }
     }
 
-    components = {}  # multidict()
-
-    app_statuses[tonomi_instance_name] = {
-      'instanceId': tonomi_instance_name,
-      'name': tonomi_instance_name,
+    app_statuses[instance_name] = {
+      'instanceId': instance_name,
+      'name': instance_name,
       'status': status,
       'interfaces': interfaces,
-      'components': components,
+      'components': {},
     }
 
   except:
-    app_statuses[tonomi_instance_name] = {
+    app_statuses[instance_name] = {
       'status': {
         'flags': {
           'active': False,

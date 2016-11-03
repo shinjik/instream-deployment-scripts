@@ -1,25 +1,22 @@
 #!/usr/bin/env python3
 
+from marathon import MarathonClient
 import sys
 import json
 import yaml
-from marathon import MarathonClient
 
 args = yaml.safe_load(sys.stdin)
-marathon_url = args.get('configuration', {}).get('configuration.marathonURL')
+marathon_url = args['configuration']['configuration.marathonURL']
 marathon_client = MarathonClient(marathon_url)
 
 instance_results = {}
 
-for tonomi_instance_name in args.get('instances', {}).keys():
-  command_id = list(args.get('instances', {}).get(tonomi_instance_name).get('commands').keys())[0]
+for instance_name, instance in args['instances'].items():
+  command_id, command_info = next(iter(instance['commands'].items()))
+  instances = command_info['control']['scale']['instances']
+  marathon_client.scale_app(instance_name, instances, force=True)
 
-  instances_number = args.get('instances', {}).get(tonomi_instance_name).get('commands').get(command_id) \
-    .get('control').get('scale').get('instances')
-
-  marathon_client.scale_app(tonomi_instance_name, instances_number, force=True)
-
-  instance_results[tonomi_instance_name] = {
+  instance_results[instance_name] = {
     '$pushAll': {
       'commands.{}'.format(command_id): [
         {'$intermediate': True},

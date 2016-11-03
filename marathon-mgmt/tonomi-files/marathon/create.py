@@ -1,59 +1,57 @@
 #!/usr/bin/env python3
 
+from marathon import MarathonClient
+from marathon.models import MarathonApp
+from marathon.models.container import *
 import sys
 import json
 import requests
 import yaml
-from marathon import MarathonClient
-from marathon.models import MarathonApp
-from marathon.models.container import *
-
 
 args = yaml.safe_load(sys.stdin)
-marathon_url = args.get('configuration', {}).get('configuration.marathonURL')
-
+marathon_url = args['configuration']['configuration.marathonURL']
 marathon_client = MarathonClient(marathon_url)
 
 instance_results = {}
 
-for tonomi_instance_id, app in args.get('launch-instances', {}).items():
-  configuration = app.get('configuration')
-  tonomi_instance_name = configuration['configuration.name']
-  tonomi_env_name = 'sandbox'
-  try:
-    tonomi_env_name = tonomi_instance_name.split('/')[1]
-  except:
-    tonomi_instance_name = '/{}/{}'.format(tonomi_env_name, tonomi_instance_name)
+for instance_id, app in args['launch-instances'].items():
+  conf = lambda x, app=app: app.get('configuration')['configuration.{}'.format(x)]
+  instance_name = '/{}'.format(conf('name'))
+
+  if conf('group') and conf('group') != '':
+    instance_name = '/{}{}'.format(conf('group'), instance_name)
 
   port_mappings = []
-  for p in configuration['configuration.portMappings']:
-    port_mappings.append({
-      MarathonContainerPortMapping(name=None, container_port=int(list(p.keys())[0]), host_port=0,
-                                   service_port=int(p[list(p.keys())[0]]), protocol='tcp', labels={})
-    })
+  for port in conf('portMappings'):
+    port_mapping_opts = {
+      'container_port': int(port['containerPort']),
+      'host_port': int(port['hostPort']),
+      'service_port': int(port['servicePort']),
+      'protocol': 'tcp'
+    }
+    port_mappings.append(MarathonContainerPortMapping(port_mapping_opts))
 
-  cmd = configuration['configuration.cmd']
-  cpus = float(configuration['configuration.cpu'])
-  mem = int(configuration['configuration.ram'])
-  disk = int(configuration['configuration.disk'])
-  instances = int(configuration['configuration.instances'])
-  image = configuration['configuration.imageId']
-
-  docker = MarathonDockerContainer(image=image, network='BRIDGE', port_mappings=port_mappings,
-                                   parameters=[], privileged=False, force_pull_image=False)
-  container = MarathonContainer(docker=docker)
-
-  labels = {
-    '_tonomi_environment': tonomi_env_name
+  docker_opts = {
+    'network': 'BRIDGE',
+    'image': conf('imageId'),
+    'port_mappings': port_mappings
   }
 
-  new_marathon_app = MarathonApp(id=tonomi_instance_name, cmd=cmd, cpus=cpus, mem=mem, instances=instances, disk=disk,
-                                 labels=labels, container=container)
+  app_opts = {
+    'id': instance_name,
+    'cmd': conf('cmd'),
+    'cpus': float(conf('cpu')),
+    'mem': conf('ram'),
+    'disk': conf('disk'),
+    'instances': conf('instances'),
+    'labels': conf('labels'),
+    'container': MarathonContainer(docker=MarathonDockerContainer(**docker_opts))
+  }
 
-  marathon_client.create_app(tonomi_instance_name, new_marathon_app)
+  marathon_client.create_app(instance_name, MarathonApp(**app_opts))
 
-  instance_results[tonomi_instance_name] = {
-    'instanceId': tonomi_instance_id,
+  instance_results[instance_name] = {
+    'instanceId': instance_id,
     '$set': {
       'status.flags.converging': True,
       'status.flags.active': False

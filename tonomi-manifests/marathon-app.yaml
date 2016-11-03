@@ -68,7 +68,7 @@ application:
                     cpu:          publish-signal(string)
                     disk:         publish-signal(int)
                     instances:    publish-signal(int)
-                    portMappings: publish-signal(list<map<string, int>>)
+                    portMappings: publish-signal(list<map<int, int>>)
                     labels:       publish-signal(list<map<string, string>>)
                 instances:
                     tasks:        publish-signal(list<map<string, object>>)

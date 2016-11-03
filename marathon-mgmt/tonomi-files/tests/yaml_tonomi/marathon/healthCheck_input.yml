@@ -2,4 +2,3 @@ configuration:
   configuration.marathonURL: 'http://localhost'
 instances:
   '/sandbox/sample':
-  '/test/sample':

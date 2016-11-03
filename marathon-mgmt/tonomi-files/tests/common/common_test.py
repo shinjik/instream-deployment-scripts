@@ -14,6 +14,7 @@ class TestCommon(object):
     self.HEALTH_CHECK_SCRIPT = '{}/{}/{}'.format(BASE_DIR, app, HEALTH_CHECK_SCRIPT)
     self.DESTROY_SCRIPT = '{}/{}/{}'.format(BASE_DIR, app, DESTROY_SCRIPT)
     self.SCALE_SCRIPT = '{}/{}/{}'.format(BASE_DIR, app, SCALE_SCRIPT)
+    self.RESTART_SCRIPT = '{}/{}/{}'.format(BASE_DIR, app, RESTART_SCRIPT)
     self.application = app
 
   def run_script(self, script_path, input_obj):
@@ -46,6 +47,8 @@ class TestCommon(object):
       return self.DESTROY_SCRIPT
     elif action in self.SCALE_SCRIPT:
       return self.SCALE_SCRIPT
+    elif action in self.RESTART_SCRIPT:
+      return self.RESTART_SCRIPT
     return None
 
   def get_obj_from_yaml(self, action, type):

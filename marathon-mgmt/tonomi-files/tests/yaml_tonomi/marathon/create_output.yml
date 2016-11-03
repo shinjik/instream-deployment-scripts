@@ -1,6 +1,6 @@
 instances:
-  '/sandbox/sample':
-    instanceId: 'sandbox'
+  '/sample':
+    instanceId: '123123'
     $set:
       status.flags.active: false
       status.flags.converging: true

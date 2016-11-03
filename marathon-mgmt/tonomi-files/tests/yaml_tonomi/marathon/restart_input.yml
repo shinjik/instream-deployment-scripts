@@ -4,6 +4,3 @@ instances:
   '/sandbox/sample':
     commands:
       1:
-        control:
-          scale:
-            instances: 2

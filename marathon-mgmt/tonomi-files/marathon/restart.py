@@ -1,26 +1,26 @@
 #!/usr/bin/env python3
 
+from marathon import MarathonClient
 import sys
 import json
 import yaml
-from marathon import MarathonClient
-
 
 args = yaml.safe_load(sys.stdin)
-marathon_url = args.get('configuration', {}).get('configuration.marathonURL', '')
-
+marathon_url = args['configuration']['configuration.marathonURL']
 marathon_client = MarathonClient(marathon_url)
 
 instance_results = {}
 
-for app_id in args.get('instances', {}).keys():
-  command_id = list(args.get('instances', {}).get(app_id).get('commands').keys())[0]
+for instance_name, instance in args['instances'].items():
+  command_id = next(iter(instance['commands'].items()))[0]
+  marathon_client.restart_app(instance_name)
 
-  marathon_client.restart_app(app_id)
-
-  instance_results[app_id] = {
+  instance_results[instance_name] = {
     '$pushAll': {
-      'commands.' + command_id: [{'$intermediate': True}, {'status.flags.converging': True}]
+      'commands.{}'.format(command_id): [
+        {'$intermediate': True},
+        {'status.flags.converging': True}
+      ]
     },
     '$set': {
       'status.flags.converging': True,
@@ -28,4 +28,4 @@ for app_id in args.get('instances', {}).keys():
     }
   }
 
-yaml.safe_dump({ 'instances': instance_results }, sys.stdout)
+yaml.safe_dump({'instances': instance_results}, sys.stdout)

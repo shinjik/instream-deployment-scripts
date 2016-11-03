@@ -12,9 +12,6 @@
   "cpus": 0.5,
   "disk": 256,
   "mem": 256,
-  "id": "/sandbox/sample",
-  "instances": 1,
-  "labels": {
-    "_tonomi_environment": "sandbox"
-  }
+  "id": "/sample",
+  "instances": 1
 }

@@ -115,13 +115,9 @@ def marathon_health_check_get_app():
 
   docker = MarathonDockerContainer(image='image')
   container = MarathonContainer(docker=docker)
-  labels = {'_tonomi_environment': 'sandbox', '_tonomi_application': 'sample'}
-  app1 = MarathonApp(id='/sandbox/sample', labels=labels, cpus=0.5, mem=256, disk=256, instances=1, container=container)
+  app1 = MarathonApp(id='/sandbox/sample', labels={}, cpus=0.5, mem=256, disk=256, instances=1, container=container)
   app1.tasks_unhealthy = 0
 
-  app2 = MarathonApp(id='/test/sample')
-
   marathon_apps.append(app1)
-  marathon_apps.append(app2)
 
   return marathon_apps

@@ -11,3 +11,9 @@ instances:
       info:
         signals:
           app-id: '/test/sample'
+  '/sandbox/sample2':
+    name: '/sandbox/sample2'
+    interfaces:
+      info:
+        signals:
+          app-id: '/sandbox/sample2'

@@ -30,7 +30,7 @@ class TestMarathonScripts(unittest.TestCase, TestCommon):
   def test_health_check(self, get_app):
     get_app.side_effect = marathon_health_check_get_app()
     self.check_script(HEALTH_CHECK_ACTION)
-    self.assertEqual(2, len(get_app.mock_calls))
+    self.assertEqual(1, len(get_app.mock_calls))
 
   @patch('marathon.MarathonClient.delete_app')
   def test_destroy(self, delete_app):
@@ -42,6 +42,10 @@ class TestMarathonScripts(unittest.TestCase, TestCommon):
     self.check_script(SCALE_ACTION)
     self.assertEqual(1, len(scale_app.mock_calls))
 
+  @patch('marathon.MarathonClient.restart_app')
+  def test_restart(self, restart_app):
+    self.check_script(RESTART_ACTION)
+    self.assertEqual(1, len(restart_app.mock_calls))
 
 if __name__ == '__main__':
   unittest.main()

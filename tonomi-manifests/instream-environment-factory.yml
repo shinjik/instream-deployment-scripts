@@ -9,7 +9,7 @@ application:
     configuration:
         component.application: "In-stream environment on marathon"
         component.discoveryScript: /isp-environment/discover.py
-        component.discoverySchedule: "0/30 * * * * ? *"
+        component.discoverySchedule: "0 0/2 * * * ? *"
     components:
         factory:
             type: scripted.ComponentFactory

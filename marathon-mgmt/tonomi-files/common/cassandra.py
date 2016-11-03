@@ -2,6 +2,7 @@ from marathon import MarathonClient
 from marathon.models import MarathonApp, MarathonConstraint, MarathonHealthCheck
 from marathon.models.container import *
 from marathon.models.app import PortDefinition, Residency
+from ephemeral import CassandraCommand
 import time
 
 
@@ -112,6 +113,17 @@ class CassandraCluster(object):
 
     self.seed_nodes = [seed]
     self.regular_nodes = [node]
+
+  @staticmethod
+  def cql_query(cluster_name, marathon_client, query):
+    try:
+      seed_app = marathon_client.get_app('{}-seed'.format(cluster_name))
+      cass_host = seed_app.tasks[0].host
+      cass_port = seed_app.labels['_cql_native_port']
+      cass_cmd = CassandraCommand(marathon_client, cass_host, cass_port, query)
+      cass_cmd.create()
+    except:
+      pass
 
   @staticmethod
   def delete_cluster(cluster_name, marathon_client):

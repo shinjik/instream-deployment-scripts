@@ -1,6 +1,6 @@
 application:
   configuration:
-    configuration.name: "test"
+    configuration.name: '/sandbox'
   interfaces:
     configuration:
       "*": bind(application#configuration.*)
@@ -30,40 +30,84 @@ application:
         factory.healthCheckScript:      /isp-environment/healthCheck.py
         factory.reconfigurationScript:  /isp-environment/reconfigure.py
         factory.commandScripts:
-          control.restart:            /isp-environment/restart.py
-          control.scale:              /isp-environment/scale.py
+          control.restart:              /isp-environment/restart.py
+          control.scale:                /isp-environment/scale.py
       interfaces:
         configuration:
           name:
             type: configuration(string)
             name: Environment name
         zookeeper:
-          zookeeper-hosts: publish-signal(list<string>)
-          zookeeper-port:  publish-signal(string)
+          zookeeper-hosts:
+            type: publish-signal(list<string>)
+            name: Zookeeper hosts
+          zookeeper-port:
+            type: publish-signal(string)
+            name: Zookeeper port
         redis:
-          master-hosts: publish-signal(list<string>)
-          slave-hosts:  publish-signal(list<string>)
-          port:         publish-signal(string)
+          master-hosts:
+            type: publish-signal(list<string>)
+            name: Redis master hosts
+          slave-hosts:
+            type: publish-signal(list<string>)
+            name: Redis slave hosts
+          port:
+            type: publish-signal(string)
+            name: Redis port
         cassandra:
-          seed-hosts: publish-signal(list<string>)
-          node-hosts: publish-signal(list<string>)
-          jmx-port:                       publish-signal(string)
-          internode-communication-port:   publish-signal(string)
-          tls-internode-commucation-port: publish-signal(string)
-          thrift-client-port:             publish-signal(string)
-          cql-native-port:                publish-signal(string)
+          seed-hosts:
+            type: publish-signal(list<string>)
+            name: Seed host
+          node-hosts:
+            type: publish-signal(list<string>)
+            name: Node hosts
+          jmx-port:
+            type: publish-signal(string)
+            name: JMX port
+          internode-communication-port:
+            type: publish-signal(string)
+            name: Internode communication port
+          tls-internode-commucation-port:
+            type: publish-signal(string)
+            name: TLS internode communication port
+          thrift-client-port:
+            type: publish-signal(string)
+            name: Thrift client port
+          cql-native-port:
+            type: publish-signal(string)
+            name: CQL native port
         kafka:
-          kafka-hosts:  publish-signal(list<string>)
-          kafka-port:   publish-signal(string)
+          kafka-hosts:
+            type: publish-signal(list<string>)
+            name: Kafka hosts
+          kafka-port:
+            type: publish-signal(string)
+            name: Kafka port
         webui:
-          load-balancer-port: publish-signal(string)
-          link:               publish-signal(string)
-          hosts:              publish-signal(list<string>)
-          port:               publish-signal(string)
+          load-balancer-port:
+            type: publish-signal(string)
+            name: LB port
+          link:
+            type: publish-signal(string)
+            name: Application link
+          hosts:
+            type: publish-signal(list<string>)
+            name: Hosts
+          port:
+            type: publish-signal(string)
+            name: Port
         spark:
-          hosts:              publish-signal(list<string>)
-          web-interface: publish-signal(string)
+          hosts:
+            type: publish-signal(list<string>)
+            name: Hosts
+          web-interface:
+            type: publish-signal(string)
+            name: Spark web interface
         application-entrypoint:
-          URL: publish-signal(string)
+          URL:
+            type: publish-signal(string)
+            name: Web application link
         control:
-          restart: receive-command()
+          restart:
+            type: receive-command()
+            name: Restart

@@ -7,23 +7,12 @@ from lambdas import *
 
 args = parse_args()
 marathon_client = get_marathon_client(args)
-
-marathon_node_hostname = marathon_url.split(':')[1][2:]
-
+marathon_node_hostname = marathon_client.servers[0].split(':')[1][2:]
 instances = {}
 
-for tonomi_env_name in args['instances'].keys():
-
-  envs = []
-  # for app in marathon_client.list_apps():
-  #   for label, value in app.labels.items():
-  #     if label == '_tonomi_environment':
-  #       if value and value not in envs:
-  #         envs.append(value)
-
-  envs = [e.id.replace('/', '') for e in marathon_client.list_groups()]
-
-  if tonomi_env_name in envs:
+for env_app in args['instances'].keys():
+  try:
+    marathon_client.get_group(env_app)
 
     status = {
       'flags': {
@@ -33,10 +22,10 @@ for tonomi_env_name in args['instances'].keys():
       }
     }
 
-    env = marathon_client.get_group(tonomi_env_name)
+    env = marathon_client.get_group(env_app)
 
     interfaces = {}
-    components = {}  # multidict()
+    components = {}
 
     for app in env.apps:
       env_name = env.id.replace('/', '')
@@ -112,16 +101,15 @@ for tonomi_env_name in args['instances'].keys():
         }
       }
 
-    instances[tonomi_env_name] = {
-      'instanceId': tonomi_env_name,
-      'name': tonomi_env_name,
+    instances[env_app] = {
+      'instanceId': env_app,
+      'name': env_app,
       'status': status,
       'interfaces': interfaces,
       'components': components,
     }
-
-  else:
-    instances[tonomi_env_name] = {
+  except:
+    instances[env_app] = {
       'status': {
         'flags': {
           'active': False,

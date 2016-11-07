@@ -4,24 +4,21 @@ import sys
 import yaml
 from marathon import MarathonClient
 from lambdas import *
+from manager import *
 
 args = parse_args()
-marathon_client = get_marathon_client(args)
+manager = MarathonManager(get_marathon_url(args))
 instances = {}
 
-for env_id in args['instances'].keys():
-  for app in marathon_client.list_apps():
-    if ('_tonomi_environment', env_id) in app.labels.items():
-      try:
-        marathon_client.delete_app(app_id, True)
-      except:
-        pass
+for instance_name in args['instances'].keys():
+  manager.destroy(instance_name)
 
-  try:
-    marathon_client.delete_group(env_id, True)
-  except:
-    pass
-
-  instances[env_id] = {}
+  instances[instance_name] = {
+    '$set': {
+      'status.flags.converging': False,
+      'status.flags.active': False,
+      'status.flags.failed': False
+    }
+  }
 
 return_instances_info(instances)

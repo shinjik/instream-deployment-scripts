@@ -2,31 +2,20 @@
 
 import sys
 import yaml
-from marathon import MarathonClient
 from lambdas import *
+from manager import *
 
 args = parse_args()
-marathon_client = get_marathon_client(args)
+manager = MarathonManager(get_marathon_url(args))
 instances = {}
-envs = []
 
-for group in marathon_client.list_groups():
-  if len(group.apps) == 0:
-    marathon_client.delete_group(group.id)
-
-for app in marathon_client.list_apps():
-  for label, value in app.labels.items():
-    if label == '_tonomi_environment':
-      if value and value not in envs:
-        envs.append(value)
-
-for env_name in envs:
-  instances[env_name] = {
-    'name': env_name,
+for instance_name in manager.discover(env_filter=True):
+  instances[instance_name] = {
+    'name': instance_name,
     'interfaces': {
       'info': {
         'signals': {
-          'app-id': env_name
+          'app-id': instance_name
         }
       }
     }

@@ -2,58 +2,69 @@
 
 import sys
 import yaml
-from marathon import MarathonClient
-from marathon.models import MarathonApp, MarathonConstraint
-from marathon.models.container import *
-from marathon.models.app import PortDefinition, Residency
-from cassandra import *
-from zookeeper import *
-from kafka import *
-from redis import *
-from webui import *
-from spark import *
 from lambdas import *
+from manager import *
 import time
 
 args = parse_args()
-marathon_client = get_marathon_client(args)
-
+manager = MarathonManager(get_marathon_url(args))
 instances = {}
 
 for env_id, env in args['launch-instances'].items():
-  configuration = env['configuration']
-  env_name = env['configuration']['configuration.name']
+  env_name = get_conf_prop(env, 'name')
+  short_env_name = env_name.replace('/', '')
+
+  ports_pool = manager.free_ports(11)
 
   # 1. zookeeper cluster
-  zookeeper_cluster = ZookeeperCluster(env_name, marathon_client)
-  zookeeper_cluster.create()
+  zookeeper_ports = ports_pool[0:3]
+  zookeeper = Zookeeper(name='{}/zookeeper'.format(env_name), ports=zookeeper_ports, env_name=short_env_name)
+  manager.create(zookeeper)
 
   # 2. redis cluster
-  redis_cluster = RedisCluster(env_name, marathon_client)
-  redis_cluster.create()
+  redis_port = ports_pool[3]
+  redis = Redis(name='{}/redis'.format(env_name), port=redis_port, env_name=short_env_name)
+  manager.create(redis)
 
   # 3. cassandra cluster
-  cassandra_cluster = CassandraCluster(env_name, marathon_client)
-  cassandra_cluster.create()
+  cassandra_ports = {
+    9042: ports_pool[4],
+    9160: ports_pool[5],
+    7199: ports_pool[6],
+    7000: ports_pool[7],
+    7001: ports_pool[8]
+  }
+  cassandra = Cassandra(name='{}/cassandra'.format(env_name), ports=cassandra_ports, env_name=short_env_name)
+  manager.create(cassandra)
 
   # 4. kafka cluster
-  zookeeper_node = marathon_client.get_app('/{}/zookeeper-1'.format(env_name))
-  zookeeper_host = zookeeper_node.tasks[0].host
-  zookeeper_port = zookeeper_node.env['ZOO_PORT']
-  kafka_app = KafkaCluster(env_name, zookeeper_host, zookeeper_port, marathon_client)
-  kafka_app.create()
+  zookeeper_host = manager.get_app_host(app_type='zookeeper', env_name=short_env_name)
+  zookeeper_port = zookeeper_ports[0]
+  kafka_port = ports_pool[9]
+  kafka = Kafka(name='{}/kafka'.format(env_name), zookeeper_host=zookeeper_host, zookeeper_port=zookeeper_port,
+                port=kafka_port, env_name=short_env_name)
+  manager.create(kafka)
 
   # TODO: populate apps!
   # 5. redis <- dictionaries,
   #    cassandra <- schema + movies list!
 
   # 6. web ui
-  webui_app = WebUINodes(env_name, marathon_client)
-  webui_app.create()
+  cassandra_host = manager.get_app_host(app_type='cassandra', env_name=short_env_name)
+  cassandra_port = cassandra_ports[9042]
+  service_port = ports_pool[10]
+  webui = UI(name='{}/webui'.format(env_name), cass_host=cassandra_host, cass_port=cassandra_port,
+             service_port=service_port, env_name=short_env_name)
+  manager.create(webui)
 
   # 7. spark app
-  spark_app = SparkCluster(env_name, marathon_client)
-  spark_app.create()
+  redis_host = manager.get_app_host(app_type='redis', env_name=short_env_name)
+  kafka_host = manager.get_app_host(app_type='kafka', env_name=short_env_name)
+  spark = Spark(name='{}/spark'.format(env_name),
+                cassandra_host=cassandra_host, cassandra_port=cassandra_port,
+                redis_host=redis_host, redis_port=redis_port,
+                kafka_host=kafka_host, kafka_port=kafka_port, env_name=short_env_name)
+  manager.create(spark)
 
   instances[env_name] = {
     'instanceId': env_id,

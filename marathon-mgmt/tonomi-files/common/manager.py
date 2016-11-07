@@ -16,13 +16,35 @@ class MarathonManager(object):
   def create(self, app):
     app._create(self._client)
 
-  def discover(self, app_filter):
+  def discover(self, app_filter=None, env_filter=False):
     apps = set()
     for app in self._client.list_apps():
-      if ('_tonomi_application', app_filter) in app.labels.items():
-        apps.add(reduce_app_name(app.id))
+      if not app_filter or ('_tonomi_application', app_filter) in app.labels.items():
+        if not env_filter:
+          apps.add(reduce_app_name(app.id))
+        else:
+          if '_tonomi_environment' in app.labels.keys():
+            env_name = app.labels['_tonomi_environment']
+            apps.add('/{}'.format(env_name))
 
     return list(apps)
+
+  def get_apps(self, app_type, env_name):
+    env_name = env_name.replace('/', '')
+    apps = []
+    for app in self._client.list_apps():
+      if ('_tonomi_environment', env_name) in app.labels.items() and ('_tonomi_application', app_type) in app.labels.items():
+        apps.append(app)
+    return [self._client.get_app(app.id) for app in apps]
+
+  def get_app_host(self, app_type, env_name):
+    while True:
+      apps = self.get_apps(app_type=app_type, env_name=env_name)
+      for app in apps:
+        for task in app.tasks:
+          host = task.host
+          return host
+      time.sleep(5)
 
   def health_check(self):
     pass
@@ -41,6 +63,9 @@ class MarathonManager(object):
 
   def scale(self):
     pass
+
+  def free_ports(self, num=1):
+    return get_free_ports(self._client, num)
 
 
 class Node(object):
@@ -68,9 +93,10 @@ class Application(object):
 
 
 class ZookeeperNode(Node):
-  def __init__(self, name, ports):
+  def __init__(self, name, ports, env_name=None):
     self.name = name
     self.ports = ports
+    self.env_name = env_name
 
     volume_name = 'vol{}-data'.format(name.replace('/', '-'))
     volumes = [
@@ -81,9 +107,10 @@ class ZookeeperNode(Node):
 
     constraints = [MarathonConstraint(field='hostname', operator='LIKE', value='')]
     residency = Residency(task_lost_behavior='WAIT_FOREVER')
+
     health_checks = [
-      # MarathonHealthCheck(grace_period_seconds=300, interval_seconds=20, max_consecutive_failures=3,
-      #                     protocol='TCP', timeout_seconds=20, ignore_http1xx=False, port=ports[9042])
+      MarathonHealthCheck(grace_period_seconds=300, interval_seconds=20, max_consecutive_failures=3,
+                          protocol='TCP', timeout_seconds=20, ignore_http1xx=False, port=ports[0])
     ]
 
     cmd = 'export ZOO_SERVERS="{}" && /docker-entrypoint.sh zkServer.sh start-foreground'
@@ -94,6 +121,9 @@ class ZookeeperNode(Node):
       '_follower_conn_port': str(ports[1]),
       '_server_conn_port': str(ports[2])
     }
+
+    if self.env_name:
+      labels['_tonomi_environment'] = self.env_name
 
     env = {
       'ZOO_MY_ID': '',
@@ -122,7 +152,7 @@ class ZookeeperNode(Node):
 
 class Zookeeper(Application):
 
-  def __init__(self, name, env=None, slaves=None, ports=None):
+  def __init__(self, name, env=None, slaves=None, ports=None, env_name=None):
     self.INSTANCE_TYPES = ['zookeeper-1', 'zookeeper-2', 'zookeeper-3']
     self.APPLICATION = 'zookeeper'
 
@@ -130,10 +160,11 @@ class Zookeeper(Application):
     self.env = env
     self.slaves = slaves
     self.ports = ports
+    self.env_name = env_name
 
-    self.zoo_1 = ZookeeperNode(name='{}/{}'.format(self.name, 'zookeeper-1'), ports=self.ports)
-    self.zoo_2 = ZookeeperNode(name='{}/{}'.format(self.name, 'zookeeper-2'), ports=self.ports)
-    self.zoo_3 = ZookeeperNode(name='{}/{}'.format(self.name, 'zookeeper-3'), ports=self.ports)
+    self.zoo_1 = ZookeeperNode(name='{}/{}'.format(self.name, 'zookeeper-1'), ports=self.ports, env_name=self.env_name)
+    self.zoo_2 = ZookeeperNode(name='{}/{}'.format(self.name, 'zookeeper-2'), ports=self.ports, env_name=self.env_name)
+    self.zoo_3 = ZookeeperNode(name='{}/{}'.format(self.name, 'zookeeper-3'), ports=self.ports, env_name=self.env_name)
 
   def _create(self, client):
     hostnames = get_mesos_hostnames(client)
@@ -146,7 +177,9 @@ class Zookeeper(Application):
 
 
 class RedisNode(Node):
-  def __init__(self, name, port, is_master=True):
+  def __init__(self, name, port, is_master=True, env_name=None):
+    self.name = name
+    self.env_name = env_name
 
     volume_name = get_volume_name(name)
     volumes = [
@@ -156,9 +189,10 @@ class RedisNode(Node):
 
     constraints = [MarathonConstraint(field='hostname', operator='UNIQUE')]
     residency = Residency(task_lost_behavior='WAIT_FOREVER')
+
     health_checks = [
-      # MarathonHealthCheck(grace_period_seconds=300, interval_seconds=20, max_consecutive_failures=3,
-      #                     protocol='TCP', timeout_seconds=20, ignore_http1xx=False, port=port)
+      MarathonHealthCheck(grace_period_seconds=300, interval_seconds=20, max_consecutive_failures=3,
+                          protocol='TCP', timeout_seconds=20, ignore_http1xx=False, port=port)
     ]
 
     service_port = 0 if not is_master else port
@@ -176,6 +210,9 @@ class RedisNode(Node):
       '_cluster_port': str(port)
     }
 
+    if self.env_name:
+      labels['_tonomi_environment'] = self.env_name
+
     env = {
       'REDIS_PORT': str(port)
     }
@@ -189,18 +226,18 @@ class RedisNode(Node):
 
 
 class Redis(Application):
-
-  def __init__(self, name, env=None, port=None):
+  def __init__(self, name, env=None, port=None, env_name=None):
     self.INSTANCE_TYPES = ['redis-master', 'redis-slave']
     self.APPLICATION = 'redis'
     self.name = name
     self.env = env
     self.port = port
+    self.env_name = env_name
 
     self.master_app = RedisNode(name='{}/{}'.format(self.name, 'redis-master'),
-                                port=self.port)
+                                port=self.port, env_name=env_name)
     self.slave_app = RedisNode(name='{}/{}'.format(self.name, 'redis-slave'),
-                               port=self.port, is_master=False)
+                               port=self.port, is_master=False, env_name=env_name)
 
   def _create(self, client):
     client.create_app(self.master_app.name, self.master_app._get_entity())
@@ -209,7 +246,9 @@ class Redis(Application):
 
 
 class CassandraNode(Node):
-  def __init__(self, name, ports, is_seed=True):
+  def __init__(self, name, ports, is_seed=True, env_name=None):
+
+    self.env_name = env_name
 
     volume_name = 'vol{}-data'.format(name.replace('/', '-'))
     volumes = [
@@ -220,8 +259,8 @@ class CassandraNode(Node):
     constraints = [MarathonConstraint(field='hostname', operator='UNIQUE')]
     residency = Residency(task_lost_behavior='WAIT_FOREVER')
     health_checks = [
-      # MarathonHealthCheck(grace_period_seconds=300, interval_seconds=20, max_consecutive_failures=3,
-      #                     protocol='TCP', timeout_seconds=20, ignore_http1xx=False, port=ports[9042])
+      MarathonHealthCheck(grace_period_seconds=300, interval_seconds=20, max_consecutive_failures=3,
+                          protocol='TCP', timeout_seconds=20, ignore_http1xx=False, port=ports[9042])
     ]
 
     ports_map = {
@@ -252,6 +291,9 @@ class CassandraNode(Node):
       '_cql_native_port': str(ports[9042])
     }
 
+    if self.env_name:
+      labels['_tonomi_environment'] = self.env_name
+
     env = {
       'SEEDS': '',
       'CASSANDRA_PORT': str(ports[9042])
@@ -272,7 +314,7 @@ class CassandraNode(Node):
 
 class Cassandra(Application):
 
-  def __init__(self, name, env=None, ports=None, seed_app=None, node_app=None):
+  def __init__(self, name, env=None, ports=None, seed_app=None, node_app=None, env_name=None):
     self.INSTANCE_TYPES = ['cassandra-seed', 'cassandra-node']
     self.APPLICATION = 'cassandra'
     self.seeds = []
@@ -281,11 +323,13 @@ class Cassandra(Application):
     self.name = name
     self.env = env
     self.ports = ports
+    self.env_name = env_name
+
     self.seed_app = CassandraNode(name='{}/{}'.format(self.name, 'cassandra-seed'),
-                                  ports=self.ports) if not seed_app else seed_app
+                                  ports=self.ports, env_name=self.env_name) if not seed_app else seed_app
 
     self.node_app = CassandraNode(name='{}/{}'.format(self.name, 'cassandra-node', is_seed=False),
-                                  ports=self.ports) if not node_app else node_app
+                                  ports=self.ports, env_name=self.env_name) if not node_app else node_app
 
   def _create(self, client):
     client.create_app(self.seed_app.name, self.seed_app._get_entity())
@@ -303,11 +347,12 @@ class Cassandra(Application):
 
 
 class KafkaBroker(Node):
-  def __init__(self, name, port, zoo_host, zoo_port):
+  def __init__(self, name, port, zoo_host, zoo_port, env_name=None):
     self.name = name
     self.port = port
     self.zoo_host = zoo_host
     self.zoo_port = zoo_port
+    self.env_name = env_name
 
     volume_name = get_volume_name(name)
     volumes = [
@@ -328,6 +373,9 @@ class KafkaBroker(Node):
       '_cluster_port': str(port)
     }
 
+    if self.env_name:
+      labels['_tonomi_environment'] = self.env_name
+
     cmd = 'export KAFKA_ADVERTISED_HOST_NAME=$HOST && start-kafka.sh'
 
     env = {
@@ -337,8 +385,8 @@ class KafkaBroker(Node):
     }
 
     health_checks = [
-      # MarathonHealthCheck(path='/', protocol='HTTP', port_index=0, grace_period_seconds=300, interval_seconds=60,
-      #                     timeout_seconds=30, max_consecutive_failures=3, ignore_http1xx=True)
+      MarathonHealthCheck(grace_period_seconds=300, interval_seconds=20, max_consecutive_failures=3,
+                          protocol='TCP', timeout_seconds=20, ignore_http1xx=False, port=port)
     ]
 
     super().__init__(name, image='wurstmeister/kafka', network='BRIDGE', labels=labels, cmd=cmd,
@@ -348,7 +396,7 @@ class KafkaBroker(Node):
 
 
 class Kafka(Application):
-  def __init__(self, name, port=None, zookeeper_host=None, zookeeper_port=None):
+  def __init__(self, name, port=None, zookeeper_host=None, zookeeper_port=None, env_name=None):
     self.INSTANCE_TYPES = ['kafka-broker']
     self.APPLICATION = 'kafka'
 
@@ -356,17 +404,18 @@ class Kafka(Application):
     self.port = port
     self.zoo_host = zookeeper_host
     self.zoo_port = zookeeper_port
+    self.env_name = env_name
 
     self.kafka = KafkaBroker(name='{}/{}'.format(self.name, 'kafka-broker'),
                              zoo_host=self.zoo_host, zoo_port=self.zoo_port,
-                             port=self.port)
+                             port=self.port, env_name=self.env_name)
 
   def _create(self, client):
     client.create_app(self.kafka.name, self.kafka._get_entity())
 
 
 class UINode(Node):
-  def __init__(self, name, service_port=0, cassandra_host=None, cassandra_port=None):
+  def __init__(self, name, service_port=0, cassandra_host=None, cassandra_port=None, env_name=None):
     port_mappings = [
       MarathonContainerPortMapping(container_port=3005, host_port=0,
                                    service_port=service_port, protocol='tcp')
@@ -375,6 +424,9 @@ class UINode(Node):
     labels = {
       '_tonomi_application': 'webui'
     }
+
+    if env_name:
+      labels['_tonomi_environment'] = env_name
 
     cmd = 'cd ${MESOS_SANDBOX}/webclient && npm install && NODE_ENV=production WEB_CLIENT_PORT=3005 npm start'
 
@@ -399,7 +451,7 @@ class UINode(Node):
 
 
 class UI(Application):
-  def __init__(self, name, service_port=None, cass_host=None, cass_port=None):
+  def __init__(self, name, service_port=None, cass_host=None, cass_port=None, env_name=None):
     self.INSTANCE_TYPES = ['webui']
     self.APPLICATION = 'webui'
 
@@ -407,10 +459,11 @@ class UI(Application):
     self.service_port = service_port
     self.cass_host = cass_host
     self.cass_port = cass_port
+    self.env_name = env_name
 
     self.webui = UINode(name='{}/{}'.format(self.name, 'webui-app'),
                         cassandra_host=self.cass_host, cassandra_port=self.cass_port,
-                        service_port=self.service_port)
+                        service_port=self.service_port, env_name=self.env_name)
 
   def _create(self, client):
     client.create_app(self.webui.name, self.webui._get_entity())
@@ -418,7 +471,7 @@ class UI(Application):
 
 class SparkNode(Node):
   def __init__(self, name, cassandra_host, cassandra_port,
-               kafka_host, kafka_port, redis_host, redis_port):
+               kafka_host, kafka_port, redis_host, redis_port, env_name=None):
     self.name = name
     self.cassandra_host = cassandra_host
     self.cassandra_port = cassandra_port
@@ -426,6 +479,7 @@ class SparkNode(Node):
     self.redis_port = redis_port
     self.kafka_host = kafka_host
     self.kafka_port = kafka_port
+    self.env_name = env_name
 
     port_mappings = [
       MarathonContainerPortMapping(container_port=8088, host_port=0, service_port=0, protocol='tcp'),
@@ -437,6 +491,9 @@ class SparkNode(Node):
     labels = {
       '_tonomi_application': 'spark'
     }
+
+    if self.env_name:
+      labels['_tonomi_environment'] = self.env_name
 
     env = {
       'CASSANDRA_HOST': self.cassandra_host,
@@ -466,7 +523,7 @@ class SparkNode(Node):
 class Spark(Application):
   def __init__(self, name, redis_host=None, redis_port=None,
                cassandra_host=None, cassandra_port=None,
-               kafka_host=None, kafka_port=None):
+               kafka_host=None, kafka_port=None, env_name=None):
     self.INSTANCE_TYPES = ['spark']
     self.APPLICATION = 'spark'
 
@@ -477,11 +534,13 @@ class Spark(Application):
     self.cassandra_port = cassandra_port
     self.kafka_host = kafka_host
     self.kafka_port = kafka_port
+    self.env_name = env_name
 
     self.spark_app = SparkNode(name='{}/{}'.format(self.name, 'spark-app'),
                                cassandra_host=cassandra_host, cassandra_port=cassandra_port,
                                redis_host=redis_host, redis_port=redis_port,
-                               kafka_host=kafka_host, kafka_port=kafka_port)
+                               kafka_host=kafka_host, kafka_port=kafka_port, env_name=self.env_name)
 
   def _create(self, client):
     client.create_app(self.spark_app.name, self.spark_app._get_entity())
+

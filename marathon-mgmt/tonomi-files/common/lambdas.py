@@ -24,7 +24,8 @@ get_volume_name = lambda name: 'vol{}-data'.format(name.replace('/', '-'))
 reduce_app_name = lambda x: reduce(lambda a, kv: a.replace(kv, ''), ['/cassandra-seed', '/cassandra-node',
                                                                      '/redis-master', '/redis-slave',
                                                                      '/webui-app', '/kafka-broker',
-                                                                     '/zookeeper-1', '/zookeeper-2', '/zookeeper-3'], x)
+                                                                     '/zookeeper-1', '/zookeeper-2', '/zookeeper-3',
+                                                                     '/spark-app'], x)
 def get_mesos_hostnames(client):
   hostnames = []
   slaves = json.loads(requests.get('http://{}:5050/slaves'.format(client.servers[0].split(':')[1][2:])).text)['slaves']

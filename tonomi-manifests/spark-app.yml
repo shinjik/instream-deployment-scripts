@@ -1,4 +1,6 @@
 application:
+  configuration:
+    configuration.name: '/new-spark'
   interfaces:
     configuration:
       "*": bind(application#configuration.*)
@@ -18,23 +20,59 @@ application:
         factory.healthCheckScript:      /spark/healthCheck.py
         factory.reconfigurationScript:  /spark/reconfigure.py
         factory.commandScripts:
-          control.restart:            /spark/restart.py
-          control.scale:              /spark/scale.py
+          control.restart:              /spark/restart.py
+          control.scale:                /spark/scale.py
       interfaces:
         configuration:
-          name:               configuration(string)
-          applicationUrl:     configuration(string)
-          kafkaBrokers:       configuration(string)
-          cassandraEndpoint:  configuration(string)
-          redisEndpoint:      configuration(string)
+          name:
+            type: configuration(string)
+            name: Application name
+          kafka-host:
+            type: configuration(string)
+            name: Kafka broker host
+          kafka-port:
+            type: configuration(int)
+            name: Kafka broker port
+          cassandra-host:
+            type: configuration(string)
+            name: Cassandra host
+          cassandra-port:
+            type: configuration(int)
+            name: Cassandra port
+          redis-host:
+            type: configuration(string)
+            name: Redis host
+          redis-port:
+            type: configuration(int)
+            name: Redis port
         spark:
-          hosts:              publish-signal(list<string>)
-          load-balancer-port: publish-signal(string)
+          hosts:
+            type: publish-signal(list<string>)
+            name: Hosts
+          load-balancer-port:
+            type: publish-signal(string)
+            name: LB port
         compute:
-          ram:        publish-signal(string)
-          cpu:        publish-signal(string)
-          disk:       publish-signal(string)
-          instances:  publish-signal(string)
+          ram:
+            type: publish-signal(string)
+            name: RAM
+          cpu:
+            type: publish-signal(string)
+            name: CPU
+          disk:
+            type: publish-signal(string)
+            name: Disk
+          instances:
+            type: publish-signal(string)
+            name: Instances
         control:
-          restart:  receive-command()
-          scale:    receive-command(int instances)
+          restart:
+            type: receive-command()
+            name: Restart
+          scale:
+            type: receive-command(int instances)
+            name: Scale application
+            arguments:
+              instances:
+                name: Instances
+                default: 1

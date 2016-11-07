@@ -3,6 +3,7 @@ from marathon.models import MarathonApp, MarathonConstraint, MarathonHealthCheck
 from marathon.models.container import *
 from marathon.models.app import PortDefinition, Residency
 from lambdas import *
+import time
 
 
 class MarathonManager(object):
@@ -398,7 +399,6 @@ class UINode(Node):
 
 
 class UI(Application):
-
   def __init__(self, name, service_port=None, cass_host=None, cass_port=None):
     self.INSTANCE_TYPES = ['webui']
     self.APPLICATION = 'webui'
@@ -415,9 +415,57 @@ class UI(Application):
   def _create(self, client):
     client.create_app(self.webui.name, self.webui._get_entity())
 
-class Spark(Application):
 
-  def __init__(self, name, redis_host=None, redis_port=None, cass_host=None, cass_port=None,
+class SparkNode(Node):
+  def __init__(self, name, cassandra_host, cassandra_port,
+               kafka_host, kafka_port, redis_host, redis_port):
+    self.name = name
+    self.cassandra_host = cassandra_host
+    self.cassandra_port = cassandra_port
+    self.redis_host = redis_host
+    self.redis_port = redis_port
+    self.kafka_host = kafka_host
+    self.kafka_port = kafka_port
+
+    port_mappings = [
+      MarathonContainerPortMapping(container_port=8088, host_port=0, service_port=0, protocol='tcp'),
+      MarathonContainerPortMapping(container_port=8042, host_port=0, service_port=0, protocol='tcp'),
+      MarathonContainerPortMapping(container_port=4040, host_port=0, service_port=0, protocol='tcp'),
+      MarathonContainerPortMapping(container_port=2122, host_port=0, service_port=0, protocol='tcp')
+    ]
+
+    labels = {
+      '_tonomi_application': 'spark'
+    }
+
+    env = {
+      'CASSANDRA_HOST': self.cassandra_host,
+      'CASSANDRA_PORT': str(self.cassandra_port),
+      'KAFKA_BROKER_LIST': '{}:{}'.format(self.kafka_host, self.kafka_port),
+      'REDIS_HOST': self.redis_host,
+      'REDIS_PORT': str(self.redis_port)
+    }
+
+    cmd = 'cd ${MESOS_SANDBOX} && bash ./streaming-runner.sh'
+
+    uris = [
+      'https://s3-us-west-1.amazonaws.com/streaming-artifacts/in-stream-tweets-analyzer.tar.gz',
+      'https://s3-us-west-1.amazonaws.com/streaming-artifacts/dictionary-populator.tar.gz'
+    ]
+
+    health_checks = [
+      MarathonHealthCheck(grace_period_seconds=300, interval_seconds=20, max_consecutive_failures=3,
+                          protocol='HTTP', timeout_seconds=20, ignore_http1xx=True, port_index=2)
+    ]
+
+    super().__init__(name, image='sequenceiq/spark:1.6.0', network='BRIDGE', labels=labels, cmd=cmd,
+                     env=env, health_checks=health_checks, cpus=0.5, mem=500, instances=1,
+                     disk=512, port_mappings=port_mappings, uris=uris)
+
+
+class Spark(Application):
+  def __init__(self, name, redis_host=None, redis_port=None,
+               cassandra_host=None, cassandra_port=None,
                kafka_host=None, kafka_port=None):
     self.INSTANCE_TYPES = ['spark']
     self.APPLICATION = 'spark'
@@ -425,7 +473,15 @@ class Spark(Application):
     self.name = name
     self.redis_host = redis_host
     self.redis_port = redis_port
-    self.cass_host = cass_host
-    self.cass_port = cass_port
+    self.cassandra_host = cassandra_host
+    self.cassandra_port = cassandra_port
     self.kafka_host = kafka_host
     self.kafka_port = kafka_port
+
+    self.spark_app = SparkNode(name='{}/{}'.format(self.name, 'spark-app'),
+                               cassandra_host=cassandra_host, cassandra_port=cassandra_port,
+                               redis_host=redis_host, redis_port=redis_port,
+                               kafka_host=kafka_host, kafka_port=kafka_port)
+
+  def _create(self, client):
+    client.create_app(self.spark_app.name, self.spark_app._get_entity())

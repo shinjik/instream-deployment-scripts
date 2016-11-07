@@ -2,24 +2,27 @@
 
 import sys
 import yaml
-from marathon import MarathonClient
-from marathon.models import MarathonApp, MarathonConstraint
-from marathon.models.container import *
-from marathon.models.app import PortDefinition, Residency
-from spark import *
 from lambdas import *
+from manager import *
 
 args = parse_args()
-marathon_client = get_marathon_client(args)
+manager = MarathonManager(get_marathon_url(args))
 instances = {}
 
 for instance_id, app in args['launch-instances'].items():
-  configuration = app['configuration']
-  env_name = configuration.get('configuration.name')
-  instance_name = '/{}/spark'.format(env_name)
+  instance_name = get_name_from_configuration(app)
+  cassandra_host = get_conf_prop(app, 'cassandra-host')
+  cassandra_port = get_conf_prop(app, 'cassandra-port')
+  redis_host = get_conf_prop(app, 'redis-host')
+  redis_port = get_conf_prop(app, 'redis-port')
+  kafka_host = get_conf_prop(app, 'kafka-host')
+  kafka_port = get_conf_prop(app, 'kafka-port')
 
-  spark_app = SparkCluster(env_name, marathon_client)
-  spark_app.create()
+  spark = Spark(name=instance_name,
+                cassandra_host=cassandra_host, cassandra_port=cassandra_port,
+                redis_host=redis_host, redis_port=redis_port,
+                kafka_host=kafka_host, kafka_port=kafka_port)
+  manager.create(spark)
 
   instances[instance_name] = {
     'instanceId': instance_id,

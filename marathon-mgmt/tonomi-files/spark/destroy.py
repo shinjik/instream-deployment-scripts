@@ -2,18 +2,15 @@
 
 import sys
 import yaml
-from marathon import MarathonClient
 from lambdas import *
+from manager import *
 
 args = parse_args()
-marathon_client = get_marathon_client(args)
+manager = MarathonManager(get_marathon_url(args))
 instances = {}
 
 for instance_name in args['instances'].keys():
-  try:
-    marathon_client.delete_app(instance_name)
-  except:
-    pass
+  manager.destroy(instance_name)
 
   instances[instance_name] = {
     '$set': {
@@ -23,4 +20,3 @@ for instance_name in args['instances'].keys():
   }
 
 return_instances_info(instances)
-

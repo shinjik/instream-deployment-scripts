@@ -11,7 +11,7 @@ instances = {}
 
 for instance_name in args['instances'].keys():
   try:
-    app = marathon_client.get_app(instance_name)
+    app = marathon_client.get_app('{}/spark-app'.format(instance_name))
 
     status = {
       'flags': {
@@ -38,11 +38,12 @@ for instance_name in args['instances'].keys():
       }
     }
 
-    components = {}
-    components['spark-worker'] = {
-      'reference': {
-        'mapping': 'apps.app-by-id',
-        'key': app.id
+    components = {
+      'spark-worker': {
+        'reference': {
+          'mapping': 'apps.app-by-id',
+          'key': app.id
+        }
       }
     }
 

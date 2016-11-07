@@ -63,6 +63,59 @@ class Application(object):
     self.name = name
 
 
+class ZookeeperNode(Node):
+  def __init__(self, name, ports):
+    self.name = name
+    self.ports = ports
+
+    volume_name = 'vol{}-data'.format(name.replace('/', '-'))
+    volumes = [
+      MarathonContainerVolume(container_path=volume_name, host_path=None, mode='RW', persistent={'size': 512}),
+      MarathonContainerVolume(container_path='/var/lib/zookeeper', host_path=volume_name, mode='RW',
+                              persistent=None)
+    ]
+
+    constraints = [MarathonConstraint(field='hostname', operator='LIKE', value='')]
+    residency = Residency(task_lost_behavior='WAIT_FOREVER')
+    health_checks = [
+      # MarathonHealthCheck(grace_period_seconds=300, interval_seconds=20, max_consecutive_failures=3,
+      #                     protocol='TCP', timeout_seconds=20, ignore_http1xx=False, port=ports[9042])
+    ]
+
+    cmd = 'export ZOO_SERVERS="{}" && /docker-entrypoint.sh zkServer.sh start-foreground'
+
+    labels = {
+      '_tonomi_application': 'zookeeper',
+      '_client_conn_port': str(ports[0]),
+      '_follower_conn_port': str(ports[1]),
+      '_server_conn_port': str(ports[2])
+    }
+
+    env = {
+      'ZOO_MY_ID': '',
+      'ZOO_PORT': str(ports[0])
+    }
+
+    super().__init__(name, image='zookeeper', volumes=volumes, network='HOST', labels=labels,
+                     cmd=cmd, constraints=constraints, residency=residency, env=env,
+                     health_checks=health_checks, cpus=0.5, mem=400, instances=1, disk=400)
+
+  def set_cluster(self, index, hostnames):
+    self.app.constraints[0].value = hostnames[index-1]
+
+    self.app.env['ZOO_MY_ID'] = str(index)
+
+    zoo_servers = ''
+    for i in range(1, 4):
+      zoo_servers += 'server.{}={}:{}:{} '.format(i, hostnames[i-1],
+                                                  self.ports[1], self.ports[2])
+
+    self.app.cmd = self.app.cmd.format(zoo_servers)
+
+  def _get_entity(self):
+    return self.app
+
+
 class Zookeeper(Application):
 
   def __init__(self, name, env=None, slaves=None, ports=None):
@@ -74,10 +127,24 @@ class Zookeeper(Application):
     self.slaves = slaves
     self.ports = ports
 
+    self.zoo_1 = ZookeeperNode(name='{}/{}'.format(self.name, 'zookeeper-1'), ports=self.ports)
+    self.zoo_2 = ZookeeperNode(name='{}/{}'.format(self.name, 'zookeeper-2'), ports=self.ports)
+    self.zoo_3 = ZookeeperNode(name='{}/{}'.format(self.name, 'zookeeper-3'), ports=self.ports)
+
+  def _create(self, client):
+    hostnames = get_mesos_hostnames(client)
+    self.zoo_1.set_cluster(1, hostnames)
+    client.create_app(self.zoo_1.name, self.zoo_1._get_entity())
+    self.zoo_2.set_cluster(2, hostnames)
+    client.create_app(self.zoo_2.name, self.zoo_2._get_entity())
+    self.zoo_3.set_cluster(3, hostnames)
+    client.create_app(self.zoo_3.name, self.zoo_3._get_entity())
+
+
 class RedisNode(Node):
   def __init__(self, name, port, is_master=True):
 
-    volume_name = 'vol{}-data'.format(name.replace('/', '-'))
+    volume_name = get_volume_name(name)
     volumes = [
       MarathonContainerVolume(container_path=volume_name, host_path=None, mode='RW', persistent={'size': 512}),
       MarathonContainerVolume(container_path='/var/lib/redis', host_path=volume_name, mode='RW', persistent=None)

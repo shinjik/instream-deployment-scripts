@@ -1,4 +1,7 @@
 application:
+  configuration:
+    configuration.name: '/new-zookeeper'
+    configuration.ports: [31281, 31288, 31388]
   interfaces:
     configuration:
       "*": bind(application#configuration.*)
@@ -18,18 +21,41 @@ application:
         factory.healthCheckScript:      /zookeeper/healthCheck.py
         factory.reconfigurationScript:  /zookeeper/reconfigure.py
         factory.commandScripts:
-          control.restart:            /zookeeper/restart.py
-          control.scale:              /zookeeper/scale.py
+          control.restart:              /zookeeper/restart.py
+          control.scale:                /zookeeper/scale.py
       interfaces:
         configuration:
-          name: configuration(string)
+          name:
+            type: configuration(string)
+            name: Application name
+          ports:
+            type: configuration(list<int>)
+            name: Ports
         zookeeper:
-          zookeeper-hosts: publish-signal(list<string>)
-          zookeeper-ports:  publish-signal(string)
+          zookeeper-hosts:
+            type: publish-signal(list<string>)
+            name: Hosts
+          zookeeper-ports:
+            type: publish-signal(list<string>)
+            name: Ports
         compute:
-          ram:  publish-signal(string)
-          cpu:  publish-signal(string)
-          disk: publish-signal(string)
+          ram:
+            type: publish-signal(string)
+            name: RAM
+          cpu:
+            type: publish-signal(string)
+            name: CPU
+          disk:
+            type: publish-signal(string)
+            name: Disk
         control:
-          restart: receive-command()
-          scale:   receive-command(int instances)
+          restart:
+            type: receive-command()
+            name: Restart
+          scale:
+            type: receive-command(int instances)
+            name: Scale
+            arguments:
+              instances:
+                name: Instances
+                default: 3

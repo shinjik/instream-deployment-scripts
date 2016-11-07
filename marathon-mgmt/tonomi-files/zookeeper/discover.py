@@ -2,26 +2,23 @@
 
 import sys
 import yaml
-from marathon import MarathonClient
 from lambdas import *
+from manager import *
 
 args = parse_args()
-marathon_client = get_marathon_client(args)
+manager = MarathonManager(get_marathon_url(args))
 instances = {}
 
-for app in marathon_client.list_apps():
-  if ('_tonomi_application', 'zookeeper') in app.labels.items():
-    env_name = app.labels['_tonomi_environment']
-    instance_name = '/{}/zookeeper'.format(env_name)
-    result['instances'][instance_name] = {
-      'name': instance_name,
-      'interfaces': {
-        'info': {
-          'signals': {
-            'app-id': instance_name
-          }
+for instance_name in manager.discover(app_filter='zookeeper'):
+  instances[instance_name] = {
+    'name': instance_name,
+    'interfaces': {
+      'info': {
+        'signals': {
+          'app-id': instance_name
         }
       }
     }
+  }
 
-return_instances_info(args)
+return_instances_info(instances)

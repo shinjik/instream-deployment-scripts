@@ -2,8 +2,6 @@
 
 import sys
 import yaml
-from marathon import MarathonClient
-from marathon.models import MarathonApp, MarathonConstraint
 from lambdas import *
 
 args = parse_args()
@@ -11,18 +9,11 @@ marathon_client = get_marathon_client(args)
 instances = {}
 
 for instance_name in args['instances'].keys():
-  env_name = instance_name.split('/')[1]
 
-  cluster_exist = False
-  list_apps = marathon_client.list_apps()
-  for app in list_apps:
-    if '/{}/zookeeper'.format(env_name) in app.id:
-      cluster_exist = True
-
-  if cluster_exist:
+  try:
     nodes = []
     for app in marathon_client.list_apps():
-      if '/{}/zookeeper'.format(env_name) in app.id:
+      if '{}/zookeeper'.format(instance_name) in app.id:
         nodes.append(marathon_client.get_app(app.id))
 
     client_conn_port = nodes[0].labels['_client_conn_port']
@@ -50,7 +41,7 @@ for instance_name in args['instances'].keys():
     #     app.constraints = constraints
     #     marathon_client.update_app(node_id, app, True)
 
-    node_app = marathon_client.get_app('/{}/zookeeper-1'.format(env_name))
+    node_app = marathon_client.get_app('{}/zookeeper-1'.format(instance_name))
 
     status = {
       'flags': {
@@ -83,11 +74,12 @@ for instance_name in args['instances'].keys():
       }
     }
 
-    components = {}
-    components['zookeeper-node'] = {
-      'reference': {
-        'mapping': 'apps.app-by-id',
-        'key': '/{}/zookeeper'.format(env_name)
+    components = {
+      'zookeeper-node': {
+        'reference': {
+          'mapping': 'apps.app-by-id',
+          'key': '{}/zookeeper'.format(instance_name)
+        }
       }
     }
 
@@ -99,7 +91,7 @@ for instance_name in args['instances'].keys():
       'components': components,
     }
 
-  else:
+  except:
     instances[instance_name] = {
       'status': {
         'flags': {

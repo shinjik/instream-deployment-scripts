@@ -7,12 +7,11 @@ from lambdas import *
 
 args = parse_args()
 marathon_client = get_marathon_client(args)
-
 instances = {}
 
 for instance_name in args['instances'].keys():
   try:
-    app = marathon_client.get_app(instance_name)
+    app = marathon_client.get_app('{}/kafka-broker'.format(instance_name))
 
     status = {
       'flags': {
@@ -39,11 +38,12 @@ for instance_name in args['instances'].keys():
       }
     }
 
-    components = multidict()
-    components['kafka-broker'] = {
-      'reference': {
-        'mapping': 'apps.app-by-id',
-        'key': app.id
+    components = {
+      'kafka-broker': {
+        'reference': {
+          'mapping': 'apps.app-by-id',
+          'key': app.id
+        }
       }
     }
 

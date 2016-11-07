@@ -54,6 +54,9 @@ class Node(object):
                            disk=disk, labels=labels, container=container, constraints=constraints,
                            residency=residency, env=env, health_checks=health_checks, uris=uris)
 
+  def _get_entity(self):
+    return self.app
+
 
 class Application(object):
 
@@ -298,19 +301,70 @@ class Cassandra(Application):
     client.create_app(self.node_app.name, self.node_app._get_entity())
 
 
-class Kafka(Application):
-
-  def __init__(self, name, port=None, zoo_host=None, zoo_port=None):
-    self.INSTANCE_TYPES = ['kafka-broker']
-    self.APPLICATION = 'kafka'
-
+class KafkaBroker(Node):
+  def __init__(self, name, port, zoo_host, zoo_port):
     self.name = name
     self.port = port
     self.zoo_host = zoo_host
     self.zoo_port = zoo_port
 
-class UINode(Node):
+    volume_name = get_volume_name(name)
+    volumes = [
+      MarathonContainerVolume(container_path=volume_name, host_path=None, mode='RW', persistent={'size': 512}),
+      MarathonContainerVolume(container_path='/var/lib/kafka', host_path=volume_name, mode='RW', persistent=None)
+    ]
 
+    port_mappings = [
+      MarathonContainerPortMapping(container_port=port, host_port=port,
+                                   service_port=port, protocol='tcp')
+    ]
+
+    constraints = [MarathonConstraint(field='hostname', operator='UNIQUE')]
+    residency = Residency(task_lost_behavior='WAIT_FOREVER')
+
+    labels = {
+      '_tonomi_application': 'kafka',
+      '_cluster_port': str(port)
+    }
+
+    cmd = 'export KAFKA_ADVERTISED_HOST_NAME=$HOST && start-kafka.sh'
+
+    env = {
+      'KAFKA_ADVERTISED_PORT': str(port),
+      'KAFKA_ZOOKEEPER_CONNECT': '{}:{}'.format(self.zoo_host, self.zoo_port),
+      'KAFKA_PORT': str(port)
+    }
+
+    health_checks = [
+      # MarathonHealthCheck(path='/', protocol='HTTP', port_index=0, grace_period_seconds=300, interval_seconds=60,
+      #                     timeout_seconds=30, max_consecutive_failures=3, ignore_http1xx=True)
+    ]
+
+    super().__init__(name, image='wurstmeister/kafka', network='BRIDGE', labels=labels, cmd=cmd,
+                     env=env, health_checks=health_checks, cpus=0.4, mem=300, instances=3,
+                     disk=256, volumes=volumes, port_mappings=port_mappings, residency=residency,
+                     constraints=constraints)
+
+
+class Kafka(Application):
+  def __init__(self, name, port=None, zookeeper_host=None, zookeeper_port=None):
+    self.INSTANCE_TYPES = ['kafka-broker']
+    self.APPLICATION = 'kafka'
+
+    self.name = name
+    self.port = port
+    self.zoo_host = zookeeper_host
+    self.zoo_port = zookeeper_port
+
+    self.kafka = KafkaBroker(name='{}/{}'.format(self.name, 'kafka-broker'),
+                             zoo_host=self.zoo_host, zoo_port=self.zoo_port,
+                             port=self.port)
+
+  def _create(self, client):
+    client.create_app(self.kafka.name, self.kafka._get_entity())
+
+
+class UINode(Node):
   def __init__(self, name, service_port=0, cassandra_host=None, cassandra_port=None):
     port_mappings = [
       MarathonContainerPortMapping(container_port=3005, host_port=0,

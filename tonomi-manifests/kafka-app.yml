@@ -1,6 +1,7 @@
 application:
   configuration:
-    configuration.name: "sandbox"
+    configuration.name: '/new-kafka'
+    configuration.port: 31992
   interfaces:
     configuration:
       "*": bind(application#configuration.*)
@@ -26,15 +27,44 @@ application:
         configuration:
           name:
             type: configuration(string)
-            name: Environment name
+            name: Application name
+          port:
+            type: configuration(int)
+            name: Port
+          zookeeper-host:
+            type: configuration(string)
+            name: Zookeeper host
+          zookeeper-port:
+            type: configuration(int)
+            name: Zookeeper port
         kafka:
-          kafka-hosts: publish-signal(list<string>)
-          kafka-port:  publish-signal(string)
+          kafka-hosts:
+            type: publish-signal(list<string>)
+            name: Kafka broker hosts
+          kafka-port:
+            type: publish-signal(string)
+            name: Kafka broker port
         compute:
-          ram:        publish-signal(string)
-          cpu:        publish-signal(string)
-          disk:       publish-signal(string)
-          instances:  publish-signal(string)
+          ram:
+            type: publish-signal(string)
+            name: RAM
+          cpu:
+            type: publish-signal(string)
+            name: CPU
+          disk:
+            type: publish-signal(string)
+            name: Disk
+          instances:
+            type: publish-signal(string)
+            name: Instances
         control:
-          restart:    receive-command()
-          scale:      receive-command(int instances)
+          restart:
+            type: receive-command()
+            name: Restart
+          scale:
+            type: receive-command(int instances)
+            name: Scale brokers
+            arguments:
+              instances:
+                name: Brokers number
+                default: 3

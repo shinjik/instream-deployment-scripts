@@ -64,8 +64,8 @@ class RedisNode(object):
     ]
 
     new_redis_app = MarathonApp(id=self.app_name, cmd=cmd, cpus=0.5, mem=300, instances=1, disk=512, labels=labels,
-                                    container=container, constraints=constraints, residency=residency, env=env,
-                                    health_checks=health_checks)
+                                container=container, constraints=constraints, residency=residency, env=env,
+                                health_checks=health_checks)
 
     self.marathon_client.create_app(self.app_name, new_redis_app)
 

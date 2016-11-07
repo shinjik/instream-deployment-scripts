@@ -8,7 +8,6 @@ from lambdas import *
 
 args = parse_args()
 marathon_client = get_marathon_client(args)
-
 instances = {}
 
 for instance_name, instance in args['instances'].items():

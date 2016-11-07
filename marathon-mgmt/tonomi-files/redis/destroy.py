@@ -3,20 +3,21 @@
 import sys
 import yaml
 from marathon import MarathonClient
-from redis import *
 from lambdas import *
+from manager import *
 
 args = parse_args()
-marathon_client = get_marathon_client(args)
+manager = MarathonManager(get_marathon_url(args))
 instances = {}
 
 for instance_name in args['instances'].keys():
-  RedisCluster.delete_cluster(instance_name, marathon_client)
+  manager.destroy(instance_name)
 
   instances[instance_name] = {
     '$set': {
       'status.flags.converging': False,
-      'status.flags.active': False
+      'status.flags.active': False,
+      'status.flags.failed': False
     }
   }
 

@@ -4,23 +4,16 @@ import sys
 import yaml
 from marathon import MarathonClient
 from lambdas import *
+from manager import *
 
 args = parse_args()
 marathon_client = get_marathon_client(args)
 instances = {}
 
 for instance_name in args['instances'].keys():
-  env_name = instance_name.split('/')[1]
-
-  cluster_exist = False
-  list_apps = marathon_client.list_apps()
-  for app in list_apps:
-    if app.id == '/{}/redis-master'.format(env_name) or app.id == '/{}/redis-slave'.format(env_name):
-      cluster_exist = True
-
-  if cluster_exist:
-    master_app = marathon_client.get_app('/{}/redis-master'.format(env_name))
-    slave_app = marathon_client.get_app('/{}/redis-slave'.format(env_name))
+  try:
+    master_app = marathon_client.get_app('{}/redis-master'.format(instance_name))
+    slave_app = marathon_client.get_app('{}/redis-slave'.format(instance_name))
 
     # check that master-slave connection is ok
     master_host = master_app.tasks[0].host
@@ -56,17 +49,18 @@ for instance_name in args['instances'].keys():
       }
     }
 
-    components = {} #multidict()
-    components['redis-master'] = {
-      'reference': {
-        'mapping': 'apps.app-by-id',
-        'key': '/{}/redis-master'.format(env_name)
-      }
-    }
-    components['redis-slave'] = {
-      'reference': {
-        'mapping': 'apps.app-by-id',
-        'key': '/{}/redis-slave'.format(env_name)
+    components = {
+      'redis-master': {
+        'reference': {
+          'mapping': 'apps.app-by-id',
+          'key': '{}/redis-master'.format(instance_name)
+        }
+      },
+      'redis-slave': {
+        'reference': {
+          'mapping': 'apps.app-by-id',
+          'key': '{}/redis-slave'.format(instance_name)
+        }
       }
     }
 
@@ -77,8 +71,7 @@ for instance_name in args['instances'].keys():
       'interfaces': interfaces,
       'components': components,
     }
-
-  else:
+  except:
     instances[instance_name] = {
       'status': {
         'flags': {

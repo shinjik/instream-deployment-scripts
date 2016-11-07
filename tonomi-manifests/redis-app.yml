@@ -1,6 +1,7 @@
 application:
   configuration:
-    configuration.name: "sandbox"
+    configuration.name: '/new-redis'
+    configuration.port: 31379
   interfaces:
     configuration:
       "*": bind(application#configuration.*)
@@ -20,21 +21,44 @@ application:
         factory.healthCheckScript:      /redis/healthCheck.py
         factory.reconfigurationScript:  /redis/reconfigure.py
         factory.commandScripts:
-          control.restart:            /redis/restart.py
-          control.scale:              /redis/scale.py
+          control.restart:              /redis/restart.py
+          control.scale:                /redis/scale.py
       interfaces:
         configuration:
           name:
             type: configuration(string)
-            name: Environment name
+            name: Application name
+          port:
+            type: configuration(int)
+            name: Port
         redis:
-          master-hosts: publish-signal(list<string>)
-          slave-hosts:  publish-signal(list<string>)
+          master-hosts:
+            type: publish-signal(list<string>)
+            name: Master host
+          slave-hosts:
+            type: publish-signal(list<string>)
+            name: Slave hosts
         compute:
-          ram:        publish-signal(string)
-          cpu:        publish-signal(string)
-          disk:       publish-signal(string)
-          instances:  publish-signal(string)
+          ram:
+            type: publish-signal(string)
+            name: RAM
+          cpu:
+            type: publish-signal(string)
+            name: CPU
+          disk:
+            type: publish-signal(string)
+            name: Disk
+          instances:
+            type: publish-signal(string)
+            name: Instances
         control:
-          restart:    receive-command()
-          scale:      receive-command(int instances)
+          restart:
+            type: receive-command()
+            name: Restart
+          scale:
+            type: receive-command(int instances)
+            name: Scale cluster
+            arguments:
+              instances:
+                name: Slave instances
+                default: 1

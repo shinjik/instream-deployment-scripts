@@ -15,7 +15,7 @@ instances = {}
 
 for instance_id, app in args['launch-instances'].items():
   conf = lambda x, app=app: app.get('configuration')['configuration.{}'.format(x)]
-  instance_name = '/{}'.format(conf('name'))
+  instance_name = conf('name')
 
   if conf('group') and conf('group') != '':
     instance_name = '/{}{}'.format(conf('group'), instance_name)
@@ -28,7 +28,7 @@ for instance_id, app in args['launch-instances'].items():
       'service_port': int(port['servicePort']),
       'protocol': 'tcp'
     }
-    port_mappings.append(MarathonContainerPortMapping(port_mapping_opts))
+    port_mappings.append(MarathonContainerPortMapping(**port_mapping_opts))
 
   docker_opts = {
     'network': 'BRIDGE',

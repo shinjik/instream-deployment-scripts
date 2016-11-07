@@ -4,23 +4,16 @@ import sys
 import yaml
 from marathon import MarathonClient
 from lambdas import *
+from manager import *
 
 args = parse_args()
-marathon_client = get_marathon_client(args)
-
+manager = MarathonManager(get_marathon_url(args))
+marathon_client = MarathonClient(get_marathon_url(args))
 instances = {}
 
 for instance_name in sorted(args['instances'].keys()):
-  env_name = instance_name.split('/')[1]
-
-  cluster_exist = False
-
-  for app in marathon_client.list_apps():
-    if app.id == '/{}/cassandra-seed'.format(env_name) or app.id == '/{}/cassandra-node'.format(env_name):
-      cluster_exist = True
-
-  if cluster_exist:
-    seed_app = marathon_client.get_app('/{}/cassandra-seed'.format(env_name))
+  try:
+    seed_app = marathon_client.get_app('{}/cassandra-seed'.format(instance_name))
     # node_app = marathon_client.get_app('/{}/cassandra-node'.format(env_name))
 
     status = {
@@ -55,17 +48,18 @@ for instance_name in sorted(args['instances'].keys()):
       }
     }
 
-    components = {}
-    components['cassandra-seed'] = {
-      'reference': {
-        'mapping': 'apps.app-by-id',
-        'key': '/{}/cassandra-seed'.format(env_name)
-      }
-    }
-    components['cassandra-node'] = {
-      'reference': {
-        'mapping': 'apps.app-by-id',
-        'key': '/{}/cassandra-node'.format(env_name)
+    components = {
+      'cassandra-seed': {
+        'reference': {
+          'mapping': 'apps.app-by-id',
+          'key': '{}/cassandra-seed'.format(instance_name)
+        }
+      },
+      'cassandra-node': {
+        'reference': {
+          'mapping': 'apps.app-by-id',
+          'key': '{}/cassandra-node'.format(instance_name)
+        }
       }
     }
 
@@ -76,8 +70,7 @@ for instance_name in sorted(args['instances'].keys()):
       'interfaces': interfaces,
       'components': components,
     }
-
-  else:
+  except:
     instances[instance_name] = {
       'status': {
         'flags': {

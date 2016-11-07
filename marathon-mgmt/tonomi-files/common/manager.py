@@ -242,6 +242,39 @@ class Kafka(Application):
     self.zoo_host = zoo_host
     self.zoo_port = zoo_port
 
+class UINode(Node):
+
+  def __init__(self, name, service_port=0, cassandra_host=None, cassandra_port=None):
+    port_mappings = [
+      MarathonContainerPortMapping(container_port=3005, host_port=0,
+                                   service_port=service_port, protocol='tcp')
+    ]
+
+    labels = {
+      '_tonomi_application': 'webui'
+    }
+
+    cmd = 'cd ${MESOS_SANDBOX}/webclient && npm install && NODE_ENV=production WEB_CLIENT_PORT=3005 npm start'
+
+    env = {
+      'CASSANDRA_HOST': cassandra_host,
+      'CASSANDRA_PORT': str(cassandra_port)
+    }
+
+    uris = ['https://s3-us-west-1.amazonaws.com/streaming-artifacts/ui.tar.gz']
+
+    health_checks = [
+      MarathonHealthCheck(path='/', protocol='HTTP', port_index=0, grace_period_seconds=300, interval_seconds=60,
+                          timeout_seconds=30, max_consecutive_failures=3, ignore_http1xx=True)
+    ]
+
+    super().__init__(name, image='node', network='BRIDGE', labels=labels, cmd=cmd, env=env,
+                     health_checks=health_checks, uris=uris, cpus=0.5, mem=300, instances=2,
+                     disk=256, port_mappings=port_mappings)
+
+  def _get_entity(self):
+    return self.app
+
 
 class UI(Application):
 
@@ -254,6 +287,12 @@ class UI(Application):
     self.cass_host = cass_host
     self.cass_port = cass_port
 
+    self.webui = UINode(name='{}/{}'.format(self.name, 'webui-app'),
+                        cassandra_host=self.cass_host, cassandra_port=self.cass_port,
+                        service_port=self.service_port)
+
+  def _create(self, client):
+    client.create_app(self.webui.name, self.webui._get_entity())
 
 class Spark(Application):
 

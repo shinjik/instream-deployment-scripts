@@ -12,7 +12,7 @@ instances = {}
 for instance_name in args['instances'].keys():
 
   # try:
-    app = marathon_client.get_app(instance_name)
+    app = marathon_client.get_app('{}/webui-app'.format(instance_name))
 
     status = {
       'flags': {

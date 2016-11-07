@@ -17,5 +17,8 @@ get_cassandra_ports = lambda app: {
   7001: get_conf_prop(app, 'tls-internode-communication-port')
 }
 get_redis_port = lambda app: get_conf_prop(app, 'port')
+get_cassandra_conf = lambda app: (get_conf_prop(app, 'cassandra-host'), get_conf_prop(app, 'cassandra-port'))
+
 reduce_app_name = lambda x: reduce(lambda a, kv: a.replace(kv, ''), ['/cassandra-seed', '/cassandra-node',
-                                                                     '/redis-master', '/redis-slave'], x)
+                                                                     '/redis-master', '/redis-slave',
+                                                                     '/webui-app', '/kafka-broker'], x)

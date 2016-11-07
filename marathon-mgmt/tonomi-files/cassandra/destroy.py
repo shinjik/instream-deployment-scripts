@@ -2,7 +2,6 @@
 
 import sys
 import yaml
-from marathon import MarathonClient
 from lambdas import *
 from manager import *
 

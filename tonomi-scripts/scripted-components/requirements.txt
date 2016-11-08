@@ -1,4 +1,1 @@
-unittest
-requests_mock
-pyyaml
-mock
+marathon

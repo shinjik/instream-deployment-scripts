@@ -7,7 +7,7 @@
   name: ansible-marathon
 
 - src: https://github.com/AnsibleShipyard/ansible-java
-  version: 0.1.4
+  version: cbac0c1
   name: ansible-java
 
 - src: https://github.com/AnsibleShipyard/ansible-zookeeper

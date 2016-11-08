@@ -3,43 +3,43 @@ kit:
   link: https://github.com/shinjik/instream-deployment-scripts
   applications:
     - name: "Mesos cluster"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/mesos-cluster-component.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/mesos-cluster.yml
     - name: "Mesos/Marathon Manager"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/mesos-marathon-manager-module.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/manager.yml
     - name: "Scripting Service"
       manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/scripting-service.yml
     - name: "In-stream environment on marathon"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/instream-environment.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/environment.yml
     - name: "In-stream environment on marathon Factory"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/instream-environment-factory.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/environment-factory.yml
     - name: "ISP web UI on marathon"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/isp-web-ui.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/webui.yml
     - name: "ISP web UI on marathon Factory"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/isp-web-ui-factory.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/webui-factory.yml
     - name: "Cassandra on marathon"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/cassandra-app.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/cassandra.yml
     - name: "Cassandra on marathon Factory"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/cassandra-app-factory.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/cassandra-factory.yml
     - name: "Kafka on marathon"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/kafka-app.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/kafka.yml
     - name: "Kafka on marathon Factory"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/kafka-app-factory.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/kafka-factory.yml
     - name: "Marathon Application"
       manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/marathon-app.yml
     - name: "Marathon Application Factory"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/marathon-app-factory.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/marathon-factory.yml
     - name: "Redis on marathon"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/redis-app.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/redis.yml
     - name: "Redis on marathon Factory"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/redis-app-factory.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/redis-factory.yml
     - name: "Zookeeper on marathon"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/zookeeper-app.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/zookeeper.yml
     - name: "Zookeeper on marathon Factory"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/zookeeper-app-factory.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/zookeeper-factory.yml
     - name: "Spark on marathon"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/spark-app.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/spark.yml
     - name: "Spark on marathon Factory"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/spark-app-factory.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/tonomi-manifests/spark-factory.yml
   provider:
     name: Company name
     link: https://link

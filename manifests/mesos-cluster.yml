@@ -1100,12 +1100,12 @@ application:
                             wget "{$.playbooks-url}" -O playbooks.zip &&
                             folder=`echo "{$.playbooks-url}" | cut -d/ -f 5` &&
                             branch=`echo "{$.playbooks-url}" | sed -n 's/\(.*\)archive\/\(.*\).zip/\2/p'` &&
-                            rm -rf --preserve-root ./ansible-playbook &&
+                            rm -rf --preserve-root ./ansible &&
                             rm -rf $${{folder}}-$${{branch}} &&
                             unzip playbooks.zip &&
-                            mv $${{folder}}-$${{branch}}/ansible-playbook ansible-playbook &&
+                            mv $${{folder}}-$${{branch}}/ansible ansible &&
                             rm -rf $${{folder}}-$${{branch}} &&
-                            sudo ansible-galaxy install -r ansible-playbook/install_roles.yml &&
+                            sudo ansible-galaxy install -r ansible/install_roles.yml &&
                             sudo chown -R ubuntu:ubuntu .ansible .ansible_galaxy
 
           .run-ansible:
@@ -1116,7 +1116,7 @@ application:
                       roles: [ "manager-node" ]
                       command:
                           - |
-                            cd ansible-playbook &&
+                            cd ansible &&
                             ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i ../inventory ./playbook.yml --extra-vars "@../params.yaml"
 
           .serialize-slaves-list:

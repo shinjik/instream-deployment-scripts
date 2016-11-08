@@ -2,7 +2,7 @@ import json
 import unittest
 from common.constants import *
 from common.common_test import *
-from common.marathon_client_fakes import *
+from common.marathon_fake_methods import *
 from mock import MagicMock
 from unittest.mock import patch
 

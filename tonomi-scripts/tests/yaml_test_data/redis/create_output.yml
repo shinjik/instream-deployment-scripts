@@ -1,0 +1,7 @@
+instances:
+  '/new-redis':
+    instanceId: 1234567
+    name: '/new-redis'
+    $set:
+      status.flags.active: false
+      status.flags.converging: true

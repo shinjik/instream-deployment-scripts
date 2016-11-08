@@ -1,5 +1,0 @@
-instances:
-  '/sandbox/kafka':
-    $set:
-      status.flags.active: false
-      status.flags.converging: false

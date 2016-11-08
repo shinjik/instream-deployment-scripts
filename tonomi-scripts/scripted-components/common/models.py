@@ -61,8 +61,8 @@ class MarathonManager(object):
   def restart(self):
     pass
 
-  def scale(self):
-    pass
+  def scale_app(self, app_name, num):
+    self._client.scale_app(app_name, num, force=True)
 
   def free_ports(self, num=1):
     return get_free_ports(self._client, num)

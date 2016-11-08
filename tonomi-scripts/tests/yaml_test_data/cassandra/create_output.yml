@@ -1,0 +1,7 @@
+instances:
+  '/new-cassandra':
+    instanceId: 1234567
+    name: '/new-cassandra'
+    $set:
+      status.flags.active: false
+      status.flags.converging: true

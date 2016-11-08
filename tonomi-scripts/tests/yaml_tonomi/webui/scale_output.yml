@@ -1,9 +1,0 @@
-instances:
-  '/sandbox/webui':
-    $pushAll:
-      'commands.1':
-        - $intermediate: true
-        - status.flags.converging: true
-    $set:
-      status.flags.converging: true
-      status.flags.active: false

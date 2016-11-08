@@ -1,0 +1,5 @@
+instances:
+  '/new-webui':
+    $set:
+      status.flags.active: false
+      status.flags.converging: false

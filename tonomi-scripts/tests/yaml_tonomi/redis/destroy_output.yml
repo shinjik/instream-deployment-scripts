@@ -1,5 +1,0 @@
-instances:
-  '/sandbox/redis':
-    $set:
-      status.flags.active: false
-      status.flags.converging: false

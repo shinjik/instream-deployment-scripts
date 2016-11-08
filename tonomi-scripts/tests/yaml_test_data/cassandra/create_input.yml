@@ -1,0 +1,11 @@
+configuration:
+  configuration.marathonURL: 'http://localhost'
+launch-instances:
+  1234567:
+    configuration:
+      configuration.name: '/new-cassandra'
+      configuration.jmx-port: 31001
+      configuration.internode-communication-port: 31002
+      configuration.tls-internode-communication-port: 31003
+      configuration.thrift-client-port: 31004
+      configuration.cql-native-port: 31005

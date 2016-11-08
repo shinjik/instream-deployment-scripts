@@ -1,0 +1,9 @@
+configuration:
+  configuration.marathonURL: 'http://localhost'
+instances:
+  '/new-redis':
+    commands:
+      1:
+        control:
+          scale:
+            instances: 2

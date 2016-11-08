@@ -1,5 +1,0 @@
-instances:
-  '/sandbox/webui':
-    $set:
-      status.flags.active: false
-      status.flags.converging: false

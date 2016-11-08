@@ -1,8 +1,11 @@
 BASE_DIR = './tonomi-scripts/scripted-components'
-YAML_MESSAGES_DIR = '{}/tests/yaml_tonomi'.format(BASE_DIR)
+COMMON_PYTHONPATH = '{}/{}'.format(BASE_DIR, 'common')
+YAML_TEST_DATA_DIR = './tonomi-scripts/tests/yaml_test_data'
 INPUT = 'input'
 OUTPUT = 'output'
 HOST = 'http://localhost'
+
+SCRIPTS = ['{}_SCRIPT'.format(x) for x in ['CREATE', 'DISCOVER', 'HEALTH_CHECK', 'DESTROY', 'SCALE', 'RESTART']]
 
 MARATHON_APP = 'marathon'
 ZOOKEEPER_APP = 'zookeeper'

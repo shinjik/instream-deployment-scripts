@@ -1,0 +1,15 @@
+configuration:
+  configuration.marathonURL: 'http://localhost'
+launch-instances:
+  '123123':
+    configuration:
+      configuration.group: ''
+      configuration.name: '/sample'
+      configuration.portMappings: []
+      configuration.labels: []
+      configuration.cmd: 'python -m SimpleHTTPServer'
+      configuration.cpu: '0.5'
+      configuration.ram: 256
+      configuration.disk: 256
+      configuration.instances: 1
+      configuration.imageId: 'python'

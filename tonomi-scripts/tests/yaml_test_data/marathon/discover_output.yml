@@ -1,0 +1,19 @@
+instances:
+  '/sandbox/cassandra/cassandra-seed':
+    name: '/sandbox/cassandra/cassandra-seed'
+    interfaces:
+      info:
+        signals:
+          app-id: '/sandbox/cassandra/cassandra-seed'
+  '/sample2/cassandra-seed':
+    name: '/sample2/cassandra-seed'
+    interfaces:
+      info:
+        signals:
+          app-id: '/sample2/cassandra-seed'
+  '/sample3':
+    name: '/sample3'
+    interfaces:
+      info:
+        signals:
+          app-id: '/sample3'

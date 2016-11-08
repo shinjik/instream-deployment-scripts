@@ -1,0 +1,6 @@
+configuration:
+  configuration.marathonURL: 'http://localhost'
+instances:
+  '/sample':
+    commands:
+      1:

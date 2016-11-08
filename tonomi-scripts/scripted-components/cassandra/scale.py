@@ -16,7 +16,7 @@ for instance_name, app in args['instances'].items():
   instances_num = command_info['control']['scale']['instances']
 
   try:
-    marathon_client.scale_app('{}-node'.format(instance_name), instances_num, force=True)
+    manager.scale_app('{}/cassandra-node'.format(instance_name), instances_num)
 
     instances[instance_name] = {
       '$pushAll': {

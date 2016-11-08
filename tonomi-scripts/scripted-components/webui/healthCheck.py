@@ -43,11 +43,12 @@ for instance_name in args['instances'].keys():
       }
     }
 
-    components = {}
-    components['ui'] = {
-      'reference': {
-        'mapping': 'apps.app-by-id',
-        'key': app.id
+    components = {
+      'ui': {
+        'reference': {
+          'mapping': 'apps.app-by-id',
+          'key': '{}/{}'.format(app.id, 'webui-app')
+        }
       }
     }
 

@@ -1,7 +1,0 @@
-instances:
-  '/sandbox/kafka':
-    instanceId: 1234567
-    name: '/sandbox/kafka'
-    $set:
-      status.flags.active: false
-      status.flags.converging: true

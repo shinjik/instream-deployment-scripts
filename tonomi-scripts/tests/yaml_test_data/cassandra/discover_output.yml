@@ -1,0 +1,13 @@
+instances:
+  '/new-cassandra':
+    name: '/new-cassandra'
+    interfaces:
+      info:
+        signals:
+          app-id: '/new-cassandra'
+  '/sandbox/cassandra':
+    name: '/sandbox/cassandra'
+    interfaces:
+      info:
+        signals:
+          app-id: '/sandbox/cassandra'

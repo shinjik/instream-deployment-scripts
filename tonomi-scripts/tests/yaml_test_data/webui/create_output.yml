@@ -1,0 +1,7 @@
+instances:
+  '/new-webui':
+    instanceId: 1234567
+    name: '/new-webui'
+    $set:
+      status.flags.active: false
+      status.flags.converging: true

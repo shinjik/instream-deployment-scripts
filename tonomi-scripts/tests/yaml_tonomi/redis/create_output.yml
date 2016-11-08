@@ -1,7 +1,0 @@
-instances:
-  '/sandbox/redis':
-    instanceId: 1234567
-    name: '/sandbox/redis'
-    $set:
-      status.flags.active: false
-      status.flags.converging: true

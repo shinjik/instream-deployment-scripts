@@ -1,7 +1,0 @@
-instances:
-  '/sandbox/cassandra':
-    instanceId: 1234567
-    name: '/sandbox/cassandra'
-    $set:
-      status.flags.active: false
-      status.flags.converging: true

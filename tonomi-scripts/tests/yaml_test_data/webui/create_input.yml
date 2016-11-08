@@ -1,0 +1,9 @@
+configuration:
+  configuration.marathonURL: 'http://localhost'
+launch-instances:
+  1234567:
+    configuration:
+      configuration.name: '/new-webui'
+      configuration.service-port: 10001
+      configuration.cassandra-host: '127.0.0.1'
+      configuration.cassandra-port: 31001

@@ -3,7 +3,7 @@ from unittest.mock import patch
 import unittest
 import sys
 
-sys.path.append('marathon-mgmt/tonomi-files/common')
+sys.path.append('tonomi-scripts/scripted-components/common')
 from ephemeral import CassandraCommand
 
 class TestEphemeralApplications(unittest.TestCase):

@@ -1,4 +1,4 @@
-BASE_DIR = './marathon-mgmt/tonomi-files'
+BASE_DIR = './tonomi-scripts/scripted-components'
 YAML_MESSAGES_DIR = '{}/tests/yaml_tonomi'.format(BASE_DIR)
 INPUT = 'input'
 OUTPUT = 'output'

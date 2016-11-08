@@ -100,7 +100,7 @@ application:
                               args_file=/tmp/arguments-$${{timestamp}}.yml &&
                               result_file=/tmp/result-$${{timestamp}}.yml &&
                               rm -f --preserve-root $$script_file $$args_file $$result_file &&
-                              echo "/home/ubuntu/marathon-mgmt/tonomi-files{$.script}" > $$script_file &&
+                              echo "/home/ubuntu/tonomi-scripts/scripted-components{$.script}" > $$script_file &&
                               echo "{$.serialized-args}" >> $$args_file &&
                               python3 -c "import yaml,sys; a={{}}; a['script']=open(sys.argv[1],'r').read().replace('\n', ''); a['arguments']=yaml.load(open(sys.argv[2],'r')); out=open(sys.argv[3],'w'); yaml.dump(a, out, default_flow_style=False); out.close();" $$script_file $$args_file $$result_file &&
                               echo $$result_file
@@ -113,8 +113,8 @@ application:
                         roles: [ "manager-node" ]
                         command:
                             - |
-                              export PYTHONPATH=/home/ubuntu/marathon-mgmt/tonomi-files/common &&
-                              ./marathon-mgmt/invoke.py < {$.arguments-file[*][0]} &&
+                              export PYTHONPATH=/home/ubuntu/tonomi-scripts/scripted-components/common &&
+                              ./tonomi-scripts/invoke.py < {$.arguments-file[*][0]} &&
                               prev_timestamp=`echo "{$.arguments-file[*][0]}" | sed -n 's/\(.*\)result\-\(.*\)\.yml/\2/p'` &&
                               args_file=/tmp/arguments-$${{prev_timestamp}}.yml &&
                               script_file=/tmp/script-$${{prev_timestamp}}.yml &&
@@ -151,10 +151,10 @@ application:
                             wget "{$.scripts-url}" -O playbooks.zip &&
                             folder=`echo "{$.scripts-url}" | cut -d/ -f 5` &&
                             branch=`echo "{$.scripts-url}" | sed -n 's/\(.*\)archive\/\(.*\).zip/\2/p'` &&
-                            rm -rf --preserve-root ./marathon-mgmt &&
+                            rm -rf --preserve-root ./tonomi-scripts &&
                             rm -rf $${{folder}}-$${{branch}} &&
                             unzip playbooks.zip &&
-                            mv $${{folder}}-$${{branch}}/marathon-mgmt marathon-mgmt &&
-                            find marathon-mgmt/tonomi-files -name "*.py" -type f -exec chmod +x {{}} \; &&
-                            chmod +x marathon-mgmt/invoke.py &&
+                            mv $${{folder}}-$${{branch}}/tonomi-scripts tonomi-scripts &&
+                            find tonomi-scripts/scripted-components -name "*.py" -type f -exec chmod +x {{}} \; &&
+                            chmod +x tonomi-scripts/invoke.py &&
                             rm -rf $${{folder}}-$${{branch}}

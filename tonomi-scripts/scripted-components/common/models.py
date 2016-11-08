@@ -85,11 +85,7 @@ class Node(object):
 
 
 class Application(object):
-
-  def __init__(self, name):
-    self.INSTANCE_TYPES = []
-    self.APPLICATION = None
-    self.name = name
+  pass
 
 
 class ZookeeperNode(Node):
@@ -98,7 +94,7 @@ class ZookeeperNode(Node):
     self.ports = ports
     self.env_name = env_name
 
-    volume_name = 'vol{}-data'.format(name.replace('/', '-'))
+    volume_name = get_volume_name(name)
     volumes = [
       MarathonContainerVolume(container_path=volume_name, host_path=None, mode='RW', persistent={'size': 512}),
       MarathonContainerVolume(container_path='/var/lib/zookeeper', host_path=volume_name, mode='RW',
@@ -146,12 +142,8 @@ class ZookeeperNode(Node):
 
     self.app.cmd = self.app.cmd.format(zoo_servers)
 
-  def _get_entity(self):
-    return self.app
-
 
 class Zookeeper(Application):
-
   def __init__(self, name, env=None, slaves=None, ports=None, env_name=None):
     self.INSTANCE_TYPES = ['zookeeper-1', 'zookeeper-2', 'zookeeper-3']
     self.APPLICATION = 'zookeeper'
@@ -221,9 +213,6 @@ class RedisNode(Node):
                      constraints=constraints, residency=residency, env=env, health_checks=health_checks,
                      cpus=0.5, mem=300, instances=1, disk=512, port_mappings=port_mappings)
 
-  def _get_entity(self):
-    return self.app
-
 
 class Redis(Application):
   def __init__(self, name, env=None, port=None, env_name=None):
@@ -250,7 +239,7 @@ class CassandraNode(Node):
 
     self.env_name = env_name
 
-    volume_name = 'vol{}-data'.format(name.replace('/', '-'))
+    volume_name = get_volume_name(name)
     volumes = [
       MarathonContainerVolume(container_path=volume_name, host_path=None, mode='RW', persistent={'size': 512}),
       MarathonContainerVolume(container_path='/var/lib/cassandra', host_path=volume_name, mode='RW', persistent=None)
@@ -307,9 +296,6 @@ class CassandraNode(Node):
 
   def set_seeds(self, seeds=''):
     self.app.env['SEEDS'] = seeds
-
-  def _get_entity(self):
-    return self.app
 
 
 class Cassandra(Application):
@@ -445,9 +431,6 @@ class UINode(Node):
     super().__init__(name, image='node', network='BRIDGE', labels=labels, cmd=cmd, env=env,
                      health_checks=health_checks, uris=uris, cpus=0.5, mem=300, instances=2,
                      disk=256, port_mappings=port_mappings)
-
-  def _get_entity(self):
-    return self.app
 
 
 class UI(Application):

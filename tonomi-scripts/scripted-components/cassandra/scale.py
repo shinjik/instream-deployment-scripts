@@ -5,7 +5,7 @@ import json
 import yaml
 from marathon import MarathonClient
 from lambdas import *
-from manager import *
+from models import *
 
 args = parse_args()
 manager = MarathonManager(get_marathon_url(args))

@@ -3,7 +3,7 @@
 import sys
 import yaml
 from lambdas import *
-from manager import *
+from models import *
 
 args = parse_args()
 manager = MarathonManager(get_marathon_url(args))

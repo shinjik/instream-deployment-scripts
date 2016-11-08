@@ -3,7 +3,7 @@
 import sys
 import yaml
 from lambdas import *
-from manager import *
+from models import *
 import time
 
 args = parse_args()

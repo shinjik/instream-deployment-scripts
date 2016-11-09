@@ -25,9 +25,9 @@ kit:
     - name: "Kafka on marathon Factory"
       manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/manifests/kafka-factory.yml
     - name: "Marathon Application"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/manifests/marathon-app.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/manifests/marathon-application.yml
     - name: "Marathon Application Factory"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/manifests/marathon-factory.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/manifests/marathon-application-factory.yml
     - name: "Redis on marathon"
       manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/manifests/redis.yml
     - name: "Redis on marathon Factory"

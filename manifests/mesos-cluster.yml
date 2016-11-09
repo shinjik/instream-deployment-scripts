@@ -10,10 +10,10 @@ application:
     input.slaves_cpu_hardware_quantity: 1
     input.slaves_memory_hardware_quantity: 1
     input.slaves_disk_hardware_quantity: 1
-    input.general_tag_hardware: "t2.small"
-    input.cpu_tag_hardware: "t2.small"
-    input.memory_tag_hardware: "t2.small"
-    input.disk_tag_hardware: "t2.small"
+    input.general_tag_hardware: "m3.large"
+    input.cpu_tag_hardware: "m3.large"
+    input.memory_tag_hardware: "m3.large"
+    input.disk_tag_hardware: "m3.large"
     input.playbooks_url: "https://github.com/shinjik/instream-deployment-scripts/archive/master.zip"
     input.mesos_version: "0.28.2"
     input.mesos_package_version: "2.0.27"
@@ -21,11 +21,11 @@ application:
 
   interfaces:
     input:
-      ami: "bind(vms#input.ami, manager-node#configuration.imageId)"
-      region: "bind(vms#input.region, manager-node#configuration.locationId)"
-      identity: "bind(vms#input.identity, manager-node#configuration.login)"
+      ami: "bind(vms#input.ami, manager-node#input.ami)"
+      region: "bind(vms#input.region, manager-node#input.region)"
+      identity: "bind(vms#input.identity, manager-node#input.identity)"
 
-      manager_hardware: "bind(vms#input.manager_hardware, manager-node#configuration.hardwareId)"
+      manager_hardware: "bind(manager-node#input.manager_hardware)"
       master_hardware: "bind(vms#input.master_hardware)"
       masters_quantity: "bind(vms#input.masters_quantity)"
 
@@ -62,16 +62,12 @@ application:
     Marathon:
       application-pic: "bind(metadata#output.marathon-pic)"
       manager: "bind(vms#result.Marathon_URL)"
-      list-applications: "bind(marathon#actions.list-applications)"
-      application-details: "bind(marathon#actions.application-details)"
-      create-application: "bind(marathon#actions.create-application)"
-      update-application: "bind(marathon#actions.update-application)"
-      destroy-application: "bind(marathon#actions.destroy-application)"
-      restart-application: "bind(marathon#actions.restart-application)"
+
+    Manager:
+      manager-ip: "bind(manager-node#result.manager-ip)"
 
   bindings:
     - [manager-node, vms]
-    - [vms, marathon#marathon-manager]
 
   components:
     metadata:
@@ -96,16 +92,8 @@ application:
             small-height: 64
 
     manager-node:
-      type: compute.Instance
-
-    vms:
       type: workflow.Instance
       interfaces:
-        manager-node:
-          networks: consume-signal(map<string, map<string, string>>)
-          exec:     send-command(string command, int timeout => string stdOut, string stdErr => string stdOut, string stdErr, int exitCode)
-          put-file: send-command(string filename, bytes payload)
-          get-file: send-command(string filename => bytes payload)
         input:
           ami:
             type: configuration(string)
@@ -118,7 +106,88 @@ application:
             name: EC2 image username
           manager_hardware:
             type: configuration(string)
-            name: Mesos cluster manager node hardware type
+            name: EC2 hardware
+        manager:
+          manager-ip:
+            type: consume-signal(string)
+        result:
+          manager-ip:
+            type: publish-signal(string)
+            name: Manager node's IP
+
+      configuration:
+        configuration.triggers: {}
+        configuration.workflows:
+          launch:
+            steps:
+              - get-env-props:
+                  action: getEnvironmentProperties
+                  output:
+                    config: result
+              - get-signals:
+                  action: getSignals
+                  output:
+                      signals: result
+              - provision-vm:
+                  action: provisionAmazonVm
+                  precedingPhases: [ get-signals ]
+                  parameters:
+                    roleName: "manager-node"
+                    imageId: "{$.ami}"
+                    vmIdentity: "{$.identity}"
+                    hardwareId: "t2.micro"
+                    quantity: 1
+                  output:
+                    result-ips: ips
+              - install-ansible:
+                  action: .install-ansible
+                  precedingPhases: [ provision-vm ]
+              - generate-ansible-ssh-key:
+                  action: .generate-ssh-key
+                  precedingPhases: [ provision-vm ]
+            return:
+              - manager-ip:
+                  description: "Node manager ip"
+                  value: "{$.result-ips[0]}"
+
+          .install-ansible:
+            steps:
+              - install:
+                  action: execrun
+                  parameters:
+                    isSudo: true
+                    roles: [ "manager-node" ]
+                    command:
+                      - |
+                        apt-get install software-properties-common &&
+                        apt-add-repository ppa:ansible/ansible &&
+                        apt-get update &&
+                        apt-get install -y git ansible unzip
+
+          .generate-ssh-key:
+            steps:
+              - generate:
+                  action: execrun
+                  parameters:
+                    roles: [ "manager-node" ]
+                    command:
+                      - |
+                        ssh-keygen -t rsa -N "" -f ~/.ssh/aws.key &&
+                        chmod 600 ~/.ssh/aws.key
+
+    vms:
+      type: workflow.Instance
+      interfaces:
+        input:
+          ami:
+            type: configuration(string)
+            name: EC2 image
+          region:
+            type: configuration(string)
+            name: EC2 datacenter
+          identity:
+            type: configuration(string)
+            name: EC2 image username
           master_hardware:
             type: configuration(string)
             name: Mesos master node hardware type
@@ -127,25 +196,25 @@ application:
             name: Quantity of mesos masters
           slaves_general_hardware_quantity:
             type: configuration(int)
-            name: Quantity of general purpose slaves
+            name: Initial quantity of general purpose slaves
           general_tag_hardware:
             type: configuration(string)
             name: General purpose hardware
           slaves_cpu_hardware_quantity:
             type: configuration(int)
-            name: Quantity of slaves with cpu-instensive hardware
+            name: Initial quantity of slaves with cpu-instensive hardware
           cpu_tag_hardware:
             type: configuration(string)
             name: CPU-intensive hardware
           slaves_memory_hardware_quantity:
             type: configuration(int)
-            name: Quantity of slaves with memory-intensive hardware
+            name: Initial quantity of slaves with memory-intensive hardware
           memory_tag_hardware:
             type: configuration(string)
             name: Memory-intensive hardware
           slaves_disk_hardware_quantity:
             type: configuration(int)
-            name: Quantity of slaves with disk-intensive hardware
+            name: Initial quantity of slaves with disk-intensive hardware
           disk_tag_hardware:
             type: configuration(string)
             name: Disk-intensive hardware
@@ -177,10 +246,10 @@ application:
           run-ansible:
             type: receive-command()
             name: Run ansible
+        manager:
+          manager-ip:
+            type: consume-signal(string)
         result:
-          Mesos_Manager:
-            type: publish-signal(string)
-            name: Mesos cluster manager node
           Mesos_Masters:
             type: publish-signal(list<string>)
             name: Mesos master nodes
@@ -206,7 +275,8 @@ application:
             type: publish-signal(string)
             name: Marathon management scripts URL
 
-      required: [manager-node]
+      required: [manager]
+
       configuration:
         configuration.triggers: {}
         configuration.workflows:
@@ -214,49 +284,51 @@ application:
             steps:
               - get-env-props:
                   action: getEnvironmentProperties
-                  phase: get-env-props
                   output:
                     config: result
 
               - get-signals:
                   action: getSignals
                   output:
-                      signals: result
+                    signals: result
 
-              - install-ansible:
-                  action: .install-ansible
-                  precedingPhases: [ get-env-props ]
-
-              - generate-ansible-ssh-key:
-                  action: .generate-ssh-key
-                  precedingPhases: [ get-env-props ]
+              - get-manager-node:
+                  action: provisionVms
+                  precedingPhases: [ get-signals ]
+                  parameters:
+                    hardwareId: t2.micro
+                    staticIps: ["{$.signals.manager.manager-ip}"]
+                    roleName: manager-node
+                    vmIdentity: 'ubuntu'
+                  output:
+                    result-ips: ips
 
               - provision-mesos-masters:
                   action: .provision-nodes
                   phase: provision-nodes
-                  precedingPhases: [ get-env-props ]
+                  precedingPhases: [ get-env-props, get-manager-node ]
                   parameters:
-                      roleName:   "mesos-master"
-                      hardwareId: "{$.master_hardware}"
-                      quantity:   "{$.masters_quantity}"
+                    roleName:   "mesos-master"
+                    hardwareId: "{$.master_hardware}"
+                    quantity:   "{$.masters_quantity}"
                   output:
-                      masterIps: ips
-                      masterDns: dns
+                    masterIps: ips
+                    masterDns: dns
 
               - provision-mesos-slaves:
                   action: .provision-slave-nodes
                   phase: provision-nodes
                   precedingPhases: [ get-env-props ]
                   parameters:
-                      slaves-general-hardware-quantity: "{$.slaves_general_hardware_quantity}"
-                      slaves-cpu-hardware-quantity:     "{$.slaves_cpu_hardware_quantity}"
-                      slaves-memory-hardware-quantity:  "{$.slaves_memory_hardware_quantity}"
-                      slaves-disk-hardware-quantity:    "{$.slaves_disk_hardware_quantity}"
+                    slaves-general-hardware-quantity: "{$.slaves_general_hardware_quantity}"
+                    slaves-cpu-hardware-quantity:     "{$.slaves_cpu_hardware_quantity}"
+                    slaves-memory-hardware-quantity:  "{$.slaves_memory_hardware_quantity}"
+                    slaves-disk-hardware-quantity:    "{$.slaves_disk_hardware_quantity}"
                   output:
-                      slaveGeneralIps: slaveGeneralIps
-                      slaveCpuIps:     slaveCpuIps
-                      slaveMemoryIps:  slaveMemoryIps
-                      slaveDiskIps:    slaveDiskIps
+                    slaveGeneralIps: slaveGeneralIps
+                    slaveCpuIps:     slaveCpuIps
+                    slaveMemoryIps:  slaveMemoryIps
+                    slaveDiskIps:    slaveDiskIps
 
               - distribute-ssh-pub-key:
                   action: .distribute-ssh-pub-key
@@ -266,62 +338,60 @@ application:
                   action: .serialize-list
                   precedingPhases: [ distribute-ssh-pub-key ]
                   parameters:
-                      arg: "{$.masterIps}"
+                    arg: "{$.masterIps}"
                   output:
-                      serialized-masters-list: as-csv
-                      yaml-serialized-masters-list: as-yaml
+                    serialized-masters-list: as-csv
+                    yaml-serialized-masters-list: as-yaml
 
               - serialize-slaves-list:
                   action: .serialize-slaves-list
                   precedingPhases: [ distribute-ssh-pub-key ]
                   parameters:
-                      general-slave-ips: "{$.slaveGeneralIps}"
-                      cpu-slave-ips:     "{$.slaveCpuIps}"
-                      memory-slave-ips:  "{$.slaveMemoryIps}"
-                      disk-slave-ips:    "{$.slaveDiskIps}"
+                    general-slave-ips: "{$.slaveGeneralIps}"
+                    cpu-slave-ips:     "{$.slaveCpuIps}"
+                    memory-slave-ips:  "{$.slaveMemoryIps}"
+                    disk-slave-ips:    "{$.slaveDiskIps}"
                   output:
-                      serialized-slaves-with-general-list: serialized-slaves-with-general-list
-                      serialized-slaves-with-cpu-list:     serialized-slaves-with-cpu-list
-                      serialized-slaves-with-memory-list:  serialized-slaves-with-memory-list
-                      serialized-slaves-with-disk-list:    serialized-slaves-with-disk-list
+                    serialized-slaves-with-general-list: serialized-slaves-with-general-list
+                    serialized-slaves-with-cpu-list:     serialized-slaves-with-cpu-list
+                    serialized-slaves-with-memory-list:  serialized-slaves-with-memory-list
+                    serialized-slaves-with-disk-list:    serialized-slaves-with-disk-list
 
               - prepare-masters-inventory-file:
                   action: .prepare-masters-inventory-file
                   precedingPhases: [ serialize-masters-list ]
                   parameters:
-                      serialized-masters-list: "{$.serialized-masters-list}"
+                    serialized-masters-list: "{$.serialized-masters-list}"
 
               - prepare-slaves-inventory-file:
                   action: .prepare-slaves-inventory-file
                   precedingPhases: [ serialize-slaves-list ]
                   parameters:
-                      serialized-slaves-with-general-list: "{$.serialized-slaves-with-general-list}"
-                      serialized-slaves-with-cpu-list:     "{$.serialized-slaves-with-cpu-list}"
-                      serialized-slaves-with-memory-list:  "{$.serialized-slaves-with-memory-list}"
-                      serialized-slaves-with-disk-list:    "{$.serialized-slaves-with-disk-list}"
+                    serialized-slaves-with-general-list: "{$.serialized-slaves-with-general-list}"
+                    serialized-slaves-with-cpu-list:     "{$.serialized-slaves-with-cpu-list}"
+                    serialized-slaves-with-memory-list:  "{$.serialized-slaves-with-memory-list}"
+                    serialized-slaves-with-disk-list:    "{$.serialized-slaves-with-disk-list}"
 
               - create-vars-file:
                   action: .update-vars-file
                   precedingPhases: [ serialize-masters-list, serialize-slaves-list ]
                   parameters:
-                      mesos-version: "{$.mesos_version}"
-                      mesos-package-version: "{$.mesos_package_version}"
-                      marathon-version: "{$.marathon_version}"
-                      yaml-serialized-masters-list: "{$.yaml-serialized-masters-list}"
+                    mesos-version: "{$.mesos_version}"
+                    mesos-package-version: "{$.mesos_package_version}"
+                    marathon-version: "{$.marathon_version}"
+                    yaml-serialized-masters-list: "{$.yaml-serialized-masters-list}"
 
               - download-ansible-scripts:
                   action: .update-ansible-playbooks
-                  precedingPhases: [ install-ansible ]
+                  precedingPhases: [ get-manager-node ]
                   parameters:
-                      playbooks-url: "{$.playbooks_url}"
+                    playbooks-url: "{$.playbooks_url}"
 
               - run-ansible:
                   action: .run-ansible
                   precedingPhases: [ download-ansible-scripts, create-vars-file ]
 
             return:
-              - Mesos_Manager:
-                  value: "{$.signals.manager-node.networks.public.ip}"
               - Mesos_Masters:
                   value: "{$.masterIps}"
               - Mesos_URL:
@@ -340,319 +410,319 @@ application:
                   value: "{$.playbooks_url}"
 
           scale-up:
-              parameters:
-                - slaves-general-hardware-quantity:
-                    description: Quantity of general-purpose slaves to add
-                    type: int
-                    default: 0
-                - slaves-cpu-hardware-quantity:
-                    description: Quantity of cpu-intensive slaves to add
-                    type: int
-                    default: 0
-                - slaves-memory-hardware-quantity:
-                    description: Quantity of memory-intensive slaves to add
-                    type: int
-                    default: 0
-                - slaves-disk-hardware-quantity:
-                    description: Quantity of disk-intensive slaves to add
-                    type: int
-                    default: 0
-              steps:
-                - add-slaves:
-                    action: .add-slaves-batch
-                    parameters:
-                        slaves-general-hardware-quantity: "{$.slaves-general-hardware-quantity}"
-                        slaves-cpu-hardware-quantity:     "{$.slaves-cpu-hardware-quantity}"
-                        slaves-memory-hardware-quantity:  "{$.slaves-memory-hardware-quantity}"
-                        slaves-disk-hardware-quantity:    "{$.slaves-disk-hardware-quantity}"
-                    output:
-                        general-slave-ips: general-slave-ips
-                        cpu-slave-ips:     cpu-slave-ips
-                        memory-slave-ips:  memory-slave-ips
-                        disk-slave-ips:    disk-slave-ips
+            parameters:
+              - slaves-general-hardware-quantity:
+                  description: Quantity of general-purpose slaves to add
+                  type: int
+                  default: 0
+              - slaves-cpu-hardware-quantity:
+                  description: Quantity of cpu-intensive slaves to add
+                  type: int
+                  default: 0
+              - slaves-memory-hardware-quantity:
+                  description: Quantity of memory-intensive slaves to add
+                  type: int
+                  default: 0
+              - slaves-disk-hardware-quantity:
+                  description: Quantity of disk-intensive slaves to add
+                  type: int
+                  default: 0
+            steps:
+              - add-slaves:
+                  action: .add-slaves-batch
+                  parameters:
+                    slaves-general-hardware-quantity: "{$.slaves-general-hardware-quantity}"
+                    slaves-cpu-hardware-quantity:     "{$.slaves-cpu-hardware-quantity}"
+                    slaves-memory-hardware-quantity:  "{$.slaves-memory-hardware-quantity}"
+                    slaves-disk-hardware-quantity:    "{$.slaves-disk-hardware-quantity}"
+                  output:
+                    general-slave-ips: general-slave-ips
+                    cpu-slave-ips:     cpu-slave-ips
+                    memory-slave-ips:  memory-slave-ips
+                    disk-slave-ips:    disk-slave-ips
 
-                - distribute-ssh-pub-key:
-                    action: .distribute-ssh-pub-key
-                    precedingPhases: [ add-slaves ]
+              - distribute-ssh-pub-key:
+                  action: .distribute-ssh-pub-key
+                  precedingPhases: [ add-slaves ]
 
-                - serialize-slaves-list:
-                    action: .serialize-slaves-list
-                    precedingPhases: [ distribute-ssh-pub-key ]
-                    parameters:
-                        general-slave-ips: "{$.general-slave-ips}"
-                        cpu-slave-ips:     "{$.cpu-slave-ips}"
-                        memory-slave-ips:  "{$.memory-slave-ips}"
-                        disk-slave-ips:    "{$.disk-slave-ips}"
-                    output:
-                        serialized-slaves-with-general-list: serialized-slaves-with-general-list
-                        serialized-slaves-with-cpu-list:     serialized-slaves-with-cpu-list
-                        serialized-slaves-with-memory-list:  serialized-slaves-with-memory-list
-                        serialized-slaves-with-disk-list:    serialized-slaves-with-disk-list
+              - serialize-slaves-list:
+                  action: .serialize-slaves-list
+                  precedingPhases: [ distribute-ssh-pub-key ]
+                  parameters:
+                    general-slave-ips: "{$.general-slave-ips}"
+                    cpu-slave-ips:     "{$.cpu-slave-ips}"
+                    memory-slave-ips:  "{$.memory-slave-ips}"
+                    disk-slave-ips:    "{$.disk-slave-ips}"
+                  output:
+                    serialized-slaves-with-general-list: serialized-slaves-with-general-list
+                    serialized-slaves-with-cpu-list:     serialized-slaves-with-cpu-list
+                    serialized-slaves-with-memory-list:  serialized-slaves-with-memory-list
+                    serialized-slaves-with-disk-list:    serialized-slaves-with-disk-list
 
-                - prepare-slaves-inventory-file:
-                    action: .prepare-slaves-inventory-file
-                    precedingPhases: [ serialize-slaves-list ]
-                    parameters:
-                        serialized-slaves-with-general-list: "{$.serialized-slaves-with-general-list}"
-                        serialized-slaves-with-cpu-list:     "{$.serialized-slaves-with-cpu-list}"
-                        serialized-slaves-with-memory-list:  "{$.serialized-slaves-with-memory-list}"
-                        serialized-slaves-with-disk-list:    "{$.serialized-slaves-with-disk-list}"
+              - prepare-slaves-inventory-file:
+                  action: .prepare-slaves-inventory-file
+                  precedingPhases: [ serialize-slaves-list ]
+                  parameters:
+                    serialized-slaves-with-general-list: "{$.serialized-slaves-with-general-list}"
+                    serialized-slaves-with-cpu-list:     "{$.serialized-slaves-with-cpu-list}"
+                    serialized-slaves-with-memory-list:  "{$.serialized-slaves-with-memory-list}"
+                    serialized-slaves-with-disk-list:    "{$.serialized-slaves-with-disk-list}"
 
-                - run-ansible:
-                    action: .run-ansible
-                    precedingPhases: [ prepare-slaves-inventory-file ]
+              - run-ansible:
+                  action: .run-ansible
+                  precedingPhases: [ prepare-slaves-inventory-file ]
 
-              return:
-                - mesos_slaves_with_general_tag:
-                    value: "{$.general-slave-ips}"
-                - mesos_slaves_with_cpu_tag:
-                    value: "{$.cpu-slave-ips}"
-                - mesos_slaves_with_memory_tag:
-                    value: "{$.memory-slave-ips}"
-                - mesos_slaves_with_disk_tag:
-                    value: "{$.disk-slave-ips}"
+            return:
+              - mesos_slaves_with_general_tag:
+                  value: "{$.general-slave-ips}"
+              - mesos_slaves_with_cpu_tag:
+                  value: "{$.cpu-slave-ips}"
+              - mesos_slaves_with_memory_tag:
+                  value: "{$.memory-slave-ips}"
+              - mesos_slaves_with_disk_tag:
+                  value: "{$.disk-slave-ips}"
 
           scale-down:
-              parameters:
-                - slaves-general-hardware-quantity:
-                    description: Quantity of general-purpose slaves to remove
-                    type: int
-                - slaves-cpu-hardware-quantity:
-                    description: Quantity of cpu-intensive slaves to remove
-                    type: int
-                - slaves-memory-hardware-quantity:
-                    description: Quantity of memory-intensive slaves to remove
-                    type: int
-                - slaves-disk-hardware-quantity:
-                    description: Quantity of disk-intensive slaves to remove
-                    type: int
-              steps:
-                - serialize-slaves-list:
-                    action: .serialize-slaves-list
-                    parameters:
-                        general-slave-ips: "{$.mesos_slaves_with_general_tag}"
-                        cpu-slave-ips:     "{$.mesos_slaves_with_cpu_tag}"
-                        memory-slave-ips:  "{$.mesos_slaves_with_memory_tag}"
-                        disk-slave-ips:    "{$.mesos_slaves_with_disk_tag}"
-                    output:
-                        serialized-slaves-with-general-list: serialized-slaves-with-general-list
-                        serialized-slaves-with-cpu-list:     serialized-slaves-with-cpu-list
-                        serialized-slaves-with-memory-list:  serialized-slaves-with-memory-list
-                        serialized-slaves-with-disk-list:    serialized-slaves-with-disk-list
+            parameters:
+              - slaves-general-hardware-quantity:
+                  description: Quantity of general-purpose slaves to remove
+                  type: int
+              - slaves-cpu-hardware-quantity:
+                  description: Quantity of cpu-intensive slaves to remove
+                  type: int
+              - slaves-memory-hardware-quantity:
+                  description: Quantity of memory-intensive slaves to remove
+                  type: int
+              - slaves-disk-hardware-quantity:
+                  description: Quantity of disk-intensive slaves to remove
+                  type: int
+            steps:
+              - serialize-slaves-list:
+                  action: .serialize-slaves-list
+                  parameters:
+                    general-slave-ips: "{$.mesos_slaves_with_general_tag}"
+                    cpu-slave-ips:     "{$.mesos_slaves_with_cpu_tag}"
+                    memory-slave-ips:  "{$.mesos_slaves_with_memory_tag}"
+                    disk-slave-ips:    "{$.mesos_slaves_with_disk_tag}"
+                  output:
+                    serialized-slaves-with-general-list: serialized-slaves-with-general-list
+                    serialized-slaves-with-cpu-list:     serialized-slaves-with-cpu-list
+                    serialized-slaves-with-memory-list:  serialized-slaves-with-memory-list
+                    serialized-slaves-with-disk-list:    serialized-slaves-with-disk-list
 
-                - get-slave-ips-to-destroy:
-                    action: .get-slave-ips-to-destroy-batch
-                    precedingPhases: [ serialize-slaves-list ]
-                    parameters:
-                        current-general-ips-serialized: "{$.serialized-slaves-with-general-list}"
-                        destroy-general-quantity:       "{$.slaves-general-hardware-quantity}"
-                        current-cpu-ips-serialized:     "{$.serialized-slaves-with-cpu-list}"
-                        destroy-cpu-quantity:           "{$.slaves-cpu-hardware-quantity}"
-                        current-memory-ips-serialized:  "{$.serialized-slaves-with-memory-list}"
-                        destroy-memory-quantity:        "{$.slaves-memory-hardware-quantity}"
-                        current-disk-ips-serialized:    "{$.serialized-slaves-with-disk-list}"
-                        destroy-disk-quantity:          "{$.slaves-disk-hardware-quantity}"
-                    output:
-                        destroy-general-ips:      destroy-general-ips
-                        destroy-general-quantity: destroy-general-quantity
-                        destroy-cpu-ips:          destroy-cpu-ips
-                        destroy-cpu-quantity:     destroy-cpu-quantity
-                        destroy-memory-ips:       destroy-memory-ips
-                        destroy-memory-quantity:  destroy-memory-quantity
-                        destroy-disk-ips:         destroy-disk-ips
-                        destroy-disk-quantity:    destroy-disk-quantity
+              - get-slave-ips-to-destroy:
+                  action: .get-slave-ips-to-destroy-batch
+                  precedingPhases: [ serialize-slaves-list ]
+                  parameters:
+                    current-general-ips-serialized: "{$.serialized-slaves-with-general-list}"
+                    destroy-general-quantity:       "{$.slaves-general-hardware-quantity}"
+                    current-cpu-ips-serialized:     "{$.serialized-slaves-with-cpu-list}"
+                    destroy-cpu-quantity:           "{$.slaves-cpu-hardware-quantity}"
+                    current-memory-ips-serialized:  "{$.serialized-slaves-with-memory-list}"
+                    destroy-memory-quantity:        "{$.slaves-memory-hardware-quantity}"
+                    current-disk-ips-serialized:    "{$.serialized-slaves-with-disk-list}"
+                    destroy-disk-quantity:          "{$.slaves-disk-hardware-quantity}"
+                  output:
+                    destroy-general-ips:      destroy-general-ips
+                    destroy-general-quantity: destroy-general-quantity
+                    destroy-cpu-ips:          destroy-cpu-ips
+                    destroy-cpu-quantity:     destroy-cpu-quantity
+                    destroy-memory-ips:       destroy-memory-ips
+                    destroy-memory-quantity:  destroy-memory-quantity
+                    destroy-disk-ips:         destroy-disk-ips
+                    destroy-disk-quantity:    destroy-disk-quantity
 
-                - destroy-slaves:
-                    action: .destroy-slaves
-                    precedingPhases: [ get-slave-ips-to-destroy ]
-                    parameters:
-                        general-slave-ips:      "{$.destroy-general-ips}"
-                        general-slave-quantity: "{$.destroy-general-quantity}"
-                        cpu-slave-ips:          "{$.destroy-cpu-ips}"
-                        cpu-slave-quantity:     "{$.destroy-cpu-quantity}"
-                        memory-slave-ips:       "{$.destroy-memory-ips}"
-                        memory-slave-quantity:  "{$.destroy-memory-quantity}"
-                        disk-slave-ips:         "{$.destroy-disk-ips}"
-                        disk-slave-quantity:    "{$.destroy-disk-quantity}"
-                    output:
-                        remained-general-ips: remained-general-ips
-                        remained-cpu-ips:     remained-cpu-ips
-                        remained-memory-ips:  remained-memory-ips
-                        remained-disk-ips:    remained-disk-ips
+              - destroy-slaves:
+                  action: .destroy-slaves
+                  precedingPhases: [ get-slave-ips-to-destroy ]
+                  parameters:
+                    general-slave-ips:      "{$.destroy-general-ips}"
+                    general-slave-quantity: "{$.destroy-general-quantity}"
+                    cpu-slave-ips:          "{$.destroy-cpu-ips}"
+                    cpu-slave-quantity:     "{$.destroy-cpu-quantity}"
+                    memory-slave-ips:       "{$.destroy-memory-ips}"
+                    memory-slave-quantity:  "{$.destroy-memory-quantity}"
+                    disk-slave-ips:         "{$.destroy-disk-ips}"
+                    disk-slave-quantity:    "{$.destroy-disk-quantity}"
+                  output:
+                    remained-general-ips: remained-general-ips
+                    remained-cpu-ips:     remained-cpu-ips
+                    remained-memory-ips:  remained-memory-ips
+                    remained-disk-ips:    remained-disk-ips
 
-                - distribute-ssh-pub-key:
-                    action: .distribute-ssh-pub-key
-                    precedingPhases: [ destroy-slaves ]
+              - distribute-ssh-pub-key:
+                  action: .distribute-ssh-pub-key
+                  precedingPhases: [ destroy-slaves ]
 
-                - serialize-slaves-list2:
-                    action: .serialize-slaves-list
-                    precedingPhases: [ distribute-ssh-pub-key ]
-                    parameters:
-                        general-slave-ips: "{$.remained-general-ips}"
-                        cpu-slave-ips:     "{$.remained-cpu-ips}"
-                        memory-slave-ips:  "{$.remained-memory-ips}"
-                        disk-slave-ips:    "{$.remained-disk-ips}"
-                    output:
-                        serialized-slaves-with-general-list2: serialized-slaves-with-general-list
-                        serialized-slaves-with-cpu-list2:     serialized-slaves-with-cpu-list
-                        serialized-slaves-with-memory-list2:  serialized-slaves-with-memory-list
-                        serialized-slaves-with-disk-list2:    serialized-slaves-with-disk-list
+              - serialize-slaves-list2:
+                  action: .serialize-slaves-list
+                  precedingPhases: [ distribute-ssh-pub-key ]
+                  parameters:
+                    general-slave-ips: "{$.remained-general-ips}"
+                    cpu-slave-ips:     "{$.remained-cpu-ips}"
+                    memory-slave-ips:  "{$.remained-memory-ips}"
+                    disk-slave-ips:    "{$.remained-disk-ips}"
+                  output:
+                    serialized-slaves-with-general-list2: serialized-slaves-with-general-list
+                    serialized-slaves-with-cpu-list2:     serialized-slaves-with-cpu-list
+                    serialized-slaves-with-memory-list2:  serialized-slaves-with-memory-list
+                    serialized-slaves-with-disk-list2:    serialized-slaves-with-disk-list
 
-                - prepare-slaves-inventory-file:
-                    action: .prepare-slaves-inventory-file
-                    precedingPhases: [ serialize-slaves-list2 ]
-                    parameters:
-                        serialized-slaves-with-general-list: "{$.serialized-slaves-with-general-list2}"
-                        serialized-slaves-with-cpu-list:     "{$.serialized-slaves-with-cpu-list2}"
-                        serialized-slaves-with-memory-list:  "{$.serialized-slaves-with-memory-list2}"
-                        serialized-slaves-with-disk-list:    "{$.serialized-slaves-with-disk-list2}"
+              - prepare-slaves-inventory-file:
+                  action: .prepare-slaves-inventory-file
+                  precedingPhases: [ serialize-slaves-list2 ]
+                  parameters:
+                    serialized-slaves-with-general-list: "{$.serialized-slaves-with-general-list2}"
+                    serialized-slaves-with-cpu-list:     "{$.serialized-slaves-with-cpu-list2}"
+                    serialized-slaves-with-memory-list:  "{$.serialized-slaves-with-memory-list2}"
+                    serialized-slaves-with-disk-list:    "{$.serialized-slaves-with-disk-list2}"
 
-                - run-ansible:
-                    action: .run-ansible
-                    precedingPhases: [ prepare-slaves-inventory-file ]
+              - run-ansible:
+                  action: .run-ansible
+                  precedingPhases: [ prepare-slaves-inventory-file ]
 
-              return:
-                - mesos_slaves_with_general_tag:
-                    value: "{$.remained-general-ips}"
-                - mesos_slaves_with_cpu_tag:
-                    value: "{$.remained-cpu-ips}"
-                - mesos_slaves_with_memory_tag:
-                    value: "{$.remained-memory-ips}"
-                - mesos_slaves_with_disk_tag:
-                    value: "{$.remained-disk-ips}"
+            return:
+              - mesos_slaves_with_general_tag:
+                  value: "{$.remained-general-ips}"
+              - mesos_slaves_with_cpu_tag:
+                  value: "{$.remained-cpu-ips}"
+              - mesos_slaves_with_memory_tag:
+                  value: "{$.remained-memory-ips}"
+              - mesos_slaves_with_disk_tag:
+                  value: "{$.remained-disk-ips}"
 
           .destroy-slaves:
-              parameters:
-                - general-slave-ips:
-                    type: list
-                - general-slave-quantity:
-                    type: int
-                - cpu-slave-ips:
-                    type: list
-                - cpu-slave-quantity:
-                    type: int
-                - memory-slave-ips:
-                    type: list
-                - memory-slave-quantity:
-                    type: int
-                - disk-slave-ips:
-                    type: list
-                - disk-slave-quantity:
-                    type: int
-              steps:
-                - destroy-general-slaves:
-                    action: destroyVms
-                    parameters:
-                        quantity: "{$.general-slave-quantity}"
-                        ips: "{$.general-slave-ips}"
-                        roleName: "mesos-general-slave"
-                    output:
-                        remained-general-ips: ips
-                - destroy-cpu-slaves:
-                    action: destroyVms
-                    parameters:
-                        quantity: "{$.cpu-slave-quantity}"
-                        ips: "{$.cpu-slave-ips}"
-                        roleName: "mesos-cpu-slave"
-                    output:
-                        remained-cpu-ips: ips
-                - destroy-memory-slaves:
-                    action: destroyVms
-                    parameters:
-                        quantity: "{$.memory-slave-quantity}"
-                        ips: "{$.memory-slave-ips}"
-                        roleName: "mesos-memory-slave"
-                    output:
-                        remained-memory-ips: ips
-                - destroy-disk-slaves:
-                    action: destroyVms
-                    parameters:
-                        quantity: "{$.disk-slave-quantity}"
-                        ips: "{$.disk-slave-ips}"
-                        roleName: "mesos-disk-slave"
-                    output:
-                        remained-disk-ips: ips
-              return:
-                - remained-general-ips:
-                    value: "{$.remained-general-ips}"
-                - remained-cpu-ips:
-                    value: "{$.remained-cpu-ips}"
-                - remained-memory-ips:
-                    value: "{$.remained-memory-ips}"
-                - remained-disk-ips:
-                    value: "{$.remained-disk-ips}"
+            parameters:
+              - general-slave-ips:
+                  type: list
+              - general-slave-quantity:
+                  type: int
+              - cpu-slave-ips:
+                  type: list
+              - cpu-slave-quantity:
+                  type: int
+              - memory-slave-ips:
+                  type: list
+              - memory-slave-quantity:
+                  type: int
+              - disk-slave-ips:
+                  type: list
+              - disk-slave-quantity:
+                  type: int
+            steps:
+              - destroy-general-slaves:
+                  action: destroyVms
+                  parameters:
+                    quantity: "{$.general-slave-quantity}"
+                    ips: "{$.general-slave-ips}"
+                    roleName: "mesos-general-slave"
+                  output:
+                    remained-general-ips: ips
+              - destroy-cpu-slaves:
+                  action: destroyVms
+                  parameters:
+                    quantity: "{$.cpu-slave-quantity}"
+                    ips: "{$.cpu-slave-ips}"
+                    roleName: "mesos-cpu-slave"
+                  output:
+                    remained-cpu-ips: ips
+              - destroy-memory-slaves:
+                  action: destroyVms
+                  parameters:
+                    quantity: "{$.memory-slave-quantity}"
+                    ips: "{$.memory-slave-ips}"
+                    roleName: "mesos-memory-slave"
+                  output:
+                    remained-memory-ips: ips
+              - destroy-disk-slaves:
+                  action: destroyVms
+                  parameters:
+                    quantity: "{$.disk-slave-quantity}"
+                    ips: "{$.disk-slave-ips}"
+                    roleName: "mesos-disk-slave"
+                  output:
+                    remained-disk-ips: ips
+            return:
+              - remained-general-ips:
+                  value: "{$.remained-general-ips}"
+              - remained-cpu-ips:
+                  value: "{$.remained-cpu-ips}"
+              - remained-memory-ips:
+                  value: "{$.remained-memory-ips}"
+              - remained-disk-ips:
+                  value: "{$.remained-disk-ips}"
 
           .get-slave-ips-to-destroy:
-              parameters:
-                - current-ips-serialized:
-                    type: list
-                - destroy-quantity:
-                    type: int
-              steps:
-                - get-ips-to-destroy:
-                    action: execrun
-                    parameters:
-                        roles: [ "manager-node" ]
-                        command:
-                            - |
-                              timestamp=`date +%s%N` &&
-                              tmp_file1=/tmp/$${{timestamp}}-1 &&
-                              tmp_file2=/tmp/$${{timestamp}}-2 &&
-                              rm -rf --preserve-root $$tmp_file1 $$tmp_file2 &&
-                              touch $$tmp_file1 &&
-                              echo "{$.current-ips-serialized}" >> $$tmp_file1 &&
-                              sed -i '/^\s*$$/d' $$tmp_file1 &&
-                              slaves=`wc -l $$tmp_file1 | cut -d' ' -f1` &&
-                              delete_count={$.destroy-quantity} &&
-                              if [[ $$slaves -lt {$.destroy-quantity} ]]; then delete_count=$$slaves; fi &&
-                              head -$${{delete_count}} $$tmp_file1 > $$tmp_file2
-                              ips=""
-                              for i in `cat $$tmp_file2`; do
-                                ips=$${{ips}},\"$$i\";
-                              done
-                              machine_ids=""
-                              for i in `cat $$tmp_file2`; do
-                                private_ip="`ssh -i ~/.ssh/aws.key {$.identity}@$${{i}} curl -s http://169.254.169.254/latest/meta-data/local-ipv4`";
-                                machine_ids="$${{machine_ids}},{{\"hostname\":\"$${{private_ip}}\",\"ip\":\"$${{private_ip}}\"}}";
-                              done
-                              machine_ids=$${{machine_ids:1}}
-                              echo "{{\"windows\":[{{\"machine_ids\":[$${{machine_ids}}],\"unavailability\":{{\"start\":{{\"nanoseconds\":$${{timestamp}}}},\"duration\":{{\"nanoseconds\":600000000000}}}}}}]}}" > /tmp/schedule-$${{timestamp}}.json
-                              echo "[$${{machine_ids}}]" > /tmp/machines-$${{timestamp}}.json
-                              curl -s "{$.Mesos_URL}/maintenance/schedule" -H "Content-type: application/json" -X POST -d @/tmp/schedule-$${{timestamp}}.json 2>&1 1> /dev/null
-                              sleep 5
-                              curl -s "{$.Mesos_URL}/machine/down" -H "Content-type: application/json" -X POST -d @/tmp/machines-$${{timestamp}}.json 2>&1 1> /dev/null
-                              echo "[$${{ips:1}}]"
-                    output:
-                        ips-list: stdout
-                - serialize-ips-list:
-                    action: serialize
-                    precedingPhases: [ get-ips-to-destroy ]
-                    parameters:
-                        format: CSV
-                        input: "{$.ips-list[*]}"
-                    output:
-                        serialized-ips: serialized
-                - ips-list-size:
-                    action: execrun
-                    precedingPhases: [ serialize-ips-list ]
-                    parameters:
-                        roles: [ "manager-node" ]
-                        command:
-                            - |
-                              timestamp=`date +%s%N`
-                              tmp_file=/tmp/$${{timestamp}} &&
-                              echo "" > $$tmp_file &&
-                              echo "{$.serialized-ips}" >> $$tmp_file
-                              sed -i '/^\s*$$/d' $$tmp_file &&
-                              size=`wc -l $$tmp_file | cut -d' ' -f1` &&
-                              echo $$size
-                    output:
-                        ips-size: stdout
-              return:
-                - ips-list:
-                    value: "{$.ips-list}"
-                - ips-size:
-                    value: "{$.ips-size[*][0]}"
+            parameters:
+              - current-ips-serialized:
+                  type: list
+              - destroy-quantity:
+                  type: int
+            steps:
+              - get-ips-to-destroy:
+                  action: execrun
+                  parameters:
+                    roles: [ "manager-node" ]
+                    command:
+                      - |
+                        timestamp=`date +%s%N` &&
+                        tmp_file1=/tmp/$${{timestamp}}-1 &&
+                        tmp_file2=/tmp/$${{timestamp}}-2 &&
+                        rm -rf --preserve-root $$tmp_file1 $$tmp_file2 &&
+                        touch $$tmp_file1 &&
+                        echo "{$.current-ips-serialized}" >> $$tmp_file1 &&
+                        sed -i '/^\s*$$/d' $$tmp_file1 &&
+                        slaves=`wc -l $$tmp_file1 | cut -d' ' -f1` &&
+                        delete_count={$.destroy-quantity} &&
+                        if [[ $$slaves -lt {$.destroy-quantity} ]]; then delete_count=$$slaves; fi &&
+                        head -$${{delete_count}} $$tmp_file1 > $$tmp_file2
+                        ips=""
+                        for i in `cat $$tmp_file2`; do
+                          ips=$${{ips}},\"$$i\";
+                        done
+                        machine_ids=""
+                        for i in `cat $$tmp_file2`; do
+                          private_ip="`ssh -i ~/.ssh/aws.key {$.identity}@$${{i}} curl -s http://169.254.169.254/latest/meta-data/local-ipv4`";
+                          machine_ids="$${{machine_ids}},{{\"hostname\":\"$${{private_ip}}\",\"ip\":\"$${{private_ip}}\"}}";
+                        done
+                        machine_ids=$${{machine_ids:1}}
+                        echo "{{\"windows\":[{{\"machine_ids\":[$${{machine_ids}}],\"unavailability\":{{\"start\":{{\"nanoseconds\":$${{timestamp}}}},\"duration\":{{\"nanoseconds\":600000000000}}}}}}]}}" > /tmp/schedule-$${{timestamp}}.json
+                        echo "[$${{machine_ids}}]" > /tmp/machines-$${{timestamp}}.json
+                        curl -s "{$.Mesos_URL}/maintenance/schedule" -H "Content-type: application/json" -X POST -d @/tmp/schedule-$${{timestamp}}.json 2>&1 1> /dev/null
+                        sleep 5
+                        curl -s "{$.Mesos_URL}/machine/down" -H "Content-type: application/json" -X POST -d @/tmp/machines-$${{timestamp}}.json 2>&1 1> /dev/null
+                        echo "[$${{ips:1}}]"
+                  output:
+                    ips-list: stdout
+              - serialize-ips-list:
+                  action: serialize
+                  precedingPhases: [ get-ips-to-destroy ]
+                  parameters:
+                    format: CSV
+                    input: "{$.ips-list[*]}"
+                  output:
+                    serialized-ips: serialized
+              - ips-list-size:
+                  action: execrun
+                  precedingPhases: [ serialize-ips-list ]
+                  parameters:
+                    roles: [ "manager-node" ]
+                    command:
+                      - |
+                        timestamp=`date +%s%N`
+                        tmp_file=/tmp/$${{timestamp}} &&
+                        echo "" > $$tmp_file &&
+                        echo "{$.serialized-ips}" >> $$tmp_file
+                        sed -i '/^\s*$$/d' $$tmp_file &&
+                        size=`wc -l $$tmp_file | cut -d' ' -f1` &&
+                        echo $$size
+                  output:
+                    ips-size: stdout
+            return:
+              - ips-list:
+                  value: "{$.ips-list}"
+              - ips-size:
+                  value: "{$.ips-size[*][0]}"
 
           .get-slave-ips-to-destroy-batch:
               parameters:
@@ -676,35 +746,35 @@ application:
                 - get-general-ips-to-destroy:
                     action: .get-slave-ips-to-destroy
                     parameters:
-                        current-ips-serialized: "{$.current-general-ips-serialized}"
-                        destroy-quantity: "{$.destroy-general-quantity}"
+                      current-ips-serialized: "{$.current-general-ips-serialized}"
+                      destroy-quantity: "{$.destroy-general-quantity}"
                     output:
-                        general-ips-list: ips-list
-                        general-ips-quantity: ips-size
+                      general-ips-list: ips-list
+                      general-ips-quantity: ips-size
                 - get-cpu-ips-to-destroy:
                     action: .get-slave-ips-to-destroy
                     parameters:
-                        current-ips-serialized: "{$.current-cpu-ips-serialized}"
-                        destroy-quantity: "{$.destroy-cpu-quantity}"
+                      current-ips-serialized: "{$.current-cpu-ips-serialized}"
+                      destroy-quantity: "{$.destroy-cpu-quantity}"
                     output:
-                        cpu-ips-list: ips-list
-                        cpu-ips-quantity: ips-size
+                      cpu-ips-list: ips-list
+                      cpu-ips-quantity: ips-size
                 - get-memory-ips-to-destroy:
                     action: .get-slave-ips-to-destroy
                     parameters:
-                        current-ips-serialized: "{$.current-memory-ips-serialized}"
-                        destroy-quantity: "{$.destroy-memory-quantity}"
+                      current-ips-serialized: "{$.current-memory-ips-serialized}"
+                      destroy-quantity: "{$.destroy-memory-quantity}"
                     output:
-                        memory-ips-list: ips-list
-                        memory-ips-quantity: ips-size
+                      memory-ips-list: ips-list
+                      memory-ips-quantity: ips-size
                 - get-disk-ips-to-destroy:
                     action: .get-slave-ips-to-destroy
                     parameters:
-                        current-ips-serialized: "{$.current-disk-ips-serialized}"
-                        destroy-quantity: "{$.destroy-disk-quantity}"
+                      current-ips-serialized: "{$.current-disk-ips-serialized}"
+                      destroy-quantity: "{$.destroy-disk-quantity}"
                     output:
-                        disk-ips-list: ips-list
-                        disk-ips-quantity: ips-size
+                      disk-ips-list: ips-list
+                      disk-ips-quantity: ips-size
               return:
                 - destroy-general-ips:
                     value: "{$.general-ips-list}"
@@ -724,541 +794,485 @@ application:
                     value: "{$.disk-ips-quantity}"
 
           .add-slaves:
-              parameters:
-                - add-slaves-quantity:
-                    description: Slaves quantity to add
-                    type: int
-                - add-slaves-rolename:
-                    description: Slaves type
-                    type: string
-                - add-slaves-hardwareid:
-                    description: Slaves EC2 hardwareId
-                    type: string
-              steps:
-                - create:
-                    action: provisionAmazonVm
-                    phase: provision
-                    parameters:
-                      roleName: "{$.add-slaves-rolename}"
-                      imageId: "{$.ami}"
-                      vmIdentity: "{$.identity}"
-                      hardwareId: "{$.add-slaves-hardwareid}"
-                      quantity: "{$.add-slaves-quantity}"
-                    output:
-                      created-ips: ips
-              return:
-                - created-ips:
-                    value: "{$.created-ips}"
+            parameters:
+              - add-slaves-quantity:
+                  description: Slaves quantity to add
+                  type: int
+              - add-slaves-rolename:
+                  description: Slaves type
+                  type: string
+              - add-slaves-hardwareid:
+                  description: Slaves EC2 hardwareId
+                  type: string
+            steps:
+              - create:
+                  action: provisionAmazonVm
+                  phase: provision
+                  parameters:
+                    roleName: "{$.add-slaves-rolename}"
+                    imageId: "{$.ami}"
+                    vmIdentity: "{$.identity}"
+                    hardwareId: "{$.add-slaves-hardwareid}"
+                    quantity: "{$.add-slaves-quantity}"
+                  output:
+                    created-ips: ips
+            return:
+              - created-ips:
+                  value: "{$.created-ips}"
 
           .add-slaves-batch:
-              parameters:
-                - slaves-general-hardware-quantity:
-                    type: int
-                - slaves-cpu-hardware-quantity:
-                    type: int
-                - slaves-memory-hardware-quantity:
-                    type: int
-                - slaves-disk-hardware-quantity:
-                    type: int
-              steps:
-                - add-general-slaves:
-                    action: .add-slaves
-                    parameters:
-                        add-slaves-quantity: "{$.slaves-general-hardware-quantity}"
-                        add-slaves-rolename: "mesos-general-slave"
-                        add-slaves-hardwareid: "{$.general_tag_hardware}"
-                    output:
-                        general-slave-ips: created-ips
-                - add-cpu-slaves:
-                    action: .add-slaves
-                    parameters:
-                        add-slaves-quantity: "{$.slaves-cpu-hardware-quantity}"
-                        add-slaves-rolename: "mesos-cpu-slave"
-                        add-slaves-hardwareid: "{$.cpu_tag_hardware}"
-                    output:
-                        cpu-slave-ips: created-ips
-                - add-memory-slaves:
-                    action: .add-slaves
-                    parameters:
-                        add-slaves-quantity: "{$.slaves-memory-hardware-quantity}"
-                        add-slaves-rolename: "mesos-memory-slave"
-                        add-slaves-hardwareid: "{$.memory_tag_hardware}"
-                    output:
-                        memory-slave-ips: created-ips
-                - add-disk-slaves:
-                    action: .add-slaves
-                    parameters:
-                        add-slaves-quantity: "{$.slaves-disk-hardware-quantity}"
-                        add-slaves-rolename: "mesos-disk-slave"
-                        add-slaves-hardwareid: "{$.disk_tag_hardware}"
-                    output:
-                        disk-slave-ips: created-ips
-              return:
-                general-slave-ips:
-                  value: "{$.general-slave-ips}"
-                cpu-slave-ips:
-                  value: "{$.cpu-slave-ips}"
-                memory-slave-ips:
-                  value: "{$.memory-slave-ips}"
-                disk-slave-ips:
-                  value: "{$.disk-slave-ips}"
+            parameters:
+              - slaves-general-hardware-quantity:
+                  type: int
+              - slaves-cpu-hardware-quantity:
+                  type: int
+              - slaves-memory-hardware-quantity:
+                  type: int
+              - slaves-disk-hardware-quantity:
+                  type: int
+            steps:
+              - add-general-slaves:
+                  action: .add-slaves
+                  parameters:
+                    add-slaves-quantity: "{$.slaves-general-hardware-quantity}"
+                    add-slaves-rolename: "mesos-general-slave"
+                    add-slaves-hardwareid: "{$.general_tag_hardware}"
+                  output:
+                    general-slave-ips: created-ips
+              - add-cpu-slaves:
+                  action: .add-slaves
+                  parameters:
+                    add-slaves-quantity: "{$.slaves-cpu-hardware-quantity}"
+                    add-slaves-rolename: "mesos-cpu-slave"
+                    add-slaves-hardwareid: "{$.cpu_tag_hardware}"
+                  output:
+                    cpu-slave-ips: created-ips
+              - add-memory-slaves:
+                  action: .add-slaves
+                  parameters:
+                    add-slaves-quantity: "{$.slaves-memory-hardware-quantity}"
+                    add-slaves-rolename: "mesos-memory-slave"
+                    add-slaves-hardwareid: "{$.memory_tag_hardware}"
+                  output:
+                    memory-slave-ips: created-ips
+              - add-disk-slaves:
+                  action: .add-slaves
+                  parameters:
+                    add-slaves-quantity: "{$.slaves-disk-hardware-quantity}"
+                    add-slaves-rolename: "mesos-disk-slave"
+                    add-slaves-hardwareid: "{$.disk_tag_hardware}"
+                  output:
+                    disk-slave-ips: created-ips
+            return:
+              general-slave-ips:
+                value: "{$.general-slave-ips}"
+              cpu-slave-ips:
+                value: "{$.cpu-slave-ips}"
+              memory-slave-ips:
+                value: "{$.memory-slave-ips}"
+              disk-slave-ips:
+                value: "{$.disk-slave-ips}"
 
           force-scale-cluster:
-              parameters:
-                - slaves-general-hardware-quantity:
-                    description: Quantity of general-purpose slaves
-                    type: int
-                - slaves-cpu-hardware-quantity:
-                    description: Quantity of slaves with cpu tag
-                    type: int
-                - slaves-memory-hardware-quantity:
-                    description: Quantity of slaves with memory tag
-                    type: int
-                - slaves-disk-hardware-quantity:
-                    description: Quantity of slaves with disk tag
-                    type: int
-              steps:
-                - provision-nodes:
-                    action: .provision-slave-nodes
-                    parameters:
-                        slaves-general-hardware-quantity: "{$.slaves-general-hardware-quantity}"
-                        slaves-cpu-hardware-quantity:     "{$.slaves-cpu-hardware-quantity}"
-                        slaves-memory-hardware-quantity:  "{$.slaves-memory-hardware-quantity}"
-                        slaves-disk-hardware-quantity:    "{$.slaves-disk-hardware-quantity}"
-                    output:
-                        slaveGeneralIps: slaveGeneralIps
-                        slaveCpuIps: slaveCpuIps
-                        slaveMemoryIps: slaveMemoryIps
-                        slaveDiskIps: slaveDiskIps
+            parameters:
+              - slaves-general-hardware-quantity:
+                  description: Quantity of general-purpose slaves
+                  type: int
+              - slaves-cpu-hardware-quantity:
+                  description: Quantity of slaves with cpu tag
+                  type: int
+              - slaves-memory-hardware-quantity:
+                  description: Quantity of slaves with memory tag
+                  type: int
+              - slaves-disk-hardware-quantity:
+                  description: Quantity of slaves with disk tag
+                  type: int
+            steps:
+              - provision-nodes:
+                  action: .provision-slave-nodes
+                  parameters:
+                    slaves-general-hardware-quantity: "{$.slaves-general-hardware-quantity}"
+                    slaves-cpu-hardware-quantity:     "{$.slaves-cpu-hardware-quantity}"
+                    slaves-memory-hardware-quantity:  "{$.slaves-memory-hardware-quantity}"
+                    slaves-disk-hardware-quantity:    "{$.slaves-disk-hardware-quantity}"
+                  output:
+                    slaveGeneralIps: slaveGeneralIps
+                    slaveCpuIps: slaveCpuIps
+                    slaveMemoryIps: slaveMemoryIps
+                    slaveDiskIps: slaveDiskIps
 
-                - distribute-ssh-pub-key:
-                    action: .distribute-ssh-pub-key
-                    precedingPhases: [ provision-nodes ]
+              - distribute-ssh-pub-key:
+                  action: .distribute-ssh-pub-key
+                  precedingPhases: [ provision-nodes ]
 
-                - serialize-slaves-list:
-                    action: .serialize-slaves-list
-                    precedingPhases: [ distribute-ssh-pub-key ]
-                    parameters:
-                        general-slave-ips: "{$.slaveGeneralIps}"
-                        cpu-slave-ips:     "{$.slaveCpuIps}"
-                        memory-slave-ips:  "{$.slaveMemoryIps}"
-                        disk-slave-ips:    "{$.slaveDiskIps}"
-                    output:
-                        serialized-slaves-with-general-list: serialized-slaves-with-general-list
-                        serialized-slaves-with-cpu-list:     serialized-slaves-with-cpu-list
-                        serialized-slaves-with-memory-list:  serialized-slaves-with-memory-list
-                        serialized-slaves-with-disk-list:    serialized-slaves-with-disk-list
+              - serialize-slaves-list:
+                  action: .serialize-slaves-list
+                  precedingPhases: [ distribute-ssh-pub-key ]
+                  parameters:
+                    general-slave-ips: "{$.slaveGeneralIps}"
+                    cpu-slave-ips:     "{$.slaveCpuIps}"
+                    memory-slave-ips:  "{$.slaveMemoryIps}"
+                    disk-slave-ips:    "{$.slaveDiskIps}"
+                  output:
+                    serialized-slaves-with-general-list: serialized-slaves-with-general-list
+                    serialized-slaves-with-cpu-list:     serialized-slaves-with-cpu-list
+                    serialized-slaves-with-memory-list:  serialized-slaves-with-memory-list
+                    serialized-slaves-with-disk-list:    serialized-slaves-with-disk-list
 
-                - prepare-slaves-inventory-file:
-                    action: .prepare-slaves-inventory-file
-                    precedingPhases: [ serialize-slaves-list ]
-                    parameters:
-                        serialized-slaves-with-general-list: "{$.serialized-slaves-with-general-list}"
-                        serialized-slaves-with-cpu-list:     "{$.serialized-slaves-with-cpu-list}"
-                        serialized-slaves-with-memory-list:  "{$.serialized-slaves-with-memory-list}"
-                        serialized-slaves-with-disk-list:    "{$.serialized-slaves-with-disk-list}"
+              - prepare-slaves-inventory-file:
+                  action: .prepare-slaves-inventory-file
+                  precedingPhases: [ serialize-slaves-list ]
+                  parameters:
+                    serialized-slaves-with-general-list: "{$.serialized-slaves-with-general-list}"
+                    serialized-slaves-with-cpu-list:     "{$.serialized-slaves-with-cpu-list}"
+                    serialized-slaves-with-memory-list:  "{$.serialized-slaves-with-memory-list}"
+                    serialized-slaves-with-disk-list:    "{$.serialized-slaves-with-disk-list}"
 
-                - run-ansible:
-                    action: .run-ansible
-                    precedingPhases: [ prepare-slaves-inventory-file ]
+              - run-ansible:
+                  action: .run-ansible
+                  precedingPhases: [ prepare-slaves-inventory-file ]
 
-              return:
-                - mesos_slaves_with_general_tag:
-                    value: "{$.slaveGeneralIps}"
-                - mesos_slaves_with_cpu_tag:
-                    value: "{$.slaveCpuIps}"
-                - mesos_slaves_with_memory_tag:
-                    value: "{$.slaveMemoryIps}"
-                - mesos_slaves_with_disk_tag:
-                    value: "{$.slaveDiskIps}"
-
-          run-ansible:
-              steps:
-                - run:
-                    action: .run-ansible
-
-          update-playbooks:
-              parameters:
-                - playbooks-url:
-                    description: Playbooks url
-                    type: string
-              steps:
-                - update:
-                    action: .update-ansible-playbooks
-                    parameters:
-                        playbooks-url: "{$.playbooks-url}"
-
-          .provision-slave-nodes:
-              parameters:
-                - slaves-general-hardware-quantity:
-                    description: Quantity of general-purpose slaves
-                    type: int
-                - slaves-cpu-hardware-quantity:
-                    description: Quantity of slaves with cpu tag
-                    type: int
-                - slaves-memory-hardware-quantity:
-                    description: Quantity of slaves with memory tag
-                    type: int
-                - slaves-disk-hardware-quantity:
-                    description: Quantity of slaves with disk tag
-                    type: int
-              steps:
-                - provision-slaves-with-general-tag:
-                    action: .provision-nodes
-                    parameters:
-                      roleName: "mesos-general-slave"
-                      hardwareId: "{$.general_tag_hardware}"
-                      quantity: "{$.slaves-general-hardware-quantity}"
-                    output:
-                      slaveGeneralIps: ips
-                      slaveGeneralDns: dns
-                - provision-slaves-with-cpu-tag:
-                    action: .provision-nodes
-                    parameters:
-                      roleName: "mesos-cpu-slave"
-                      hardwareId: "{$.cpu_tag_hardware}"
-                      quantity: "{$.slaves-cpu-hardware-quantity}"
-                    output:
-                      slaveCpuIps: ips
-                      slaveCpuDns: dns
-                - provision-slaves-with-memory-tag:
-                    action: .provision-nodes
-                    parameters:
-                      roleName: "mesos-memory-slave"
-                      hardwareId: "{$.memory_tag_hardware}"
-                      quantity: "{$.slaves-memory-hardware-quantity}"
-                    output:
-                      slaveMemoryIps: ips
-                      slaveMemoryDns: dns
-                - provision-slaves-with-disk-tag:
-                    action: .provision-nodes
-                    parameters:
-                      roleName: "mesos-disk-slave"
-                      hardwareId: "{$.disk_tag_hardware}"
-                      quantity: "{$.slaves-disk-hardware-quantity}"
-                    output:
-                      slaveDiskIps: ips
-                      slaveDiskDns: dns
-              return:
-                slaveGeneralIps:
+            return:
+              - mesos_slaves_with_general_tag:
                   value: "{$.slaveGeneralIps}"
-                slaveCpuIps:
+              - mesos_slaves_with_cpu_tag:
                   value: "{$.slaveCpuIps}"
-                slaveMemoryIps:
+              - mesos_slaves_with_memory_tag:
                   value: "{$.slaveMemoryIps}"
-                slaveDiskIps:
+              - mesos_slaves_with_disk_tag:
                   value: "{$.slaveDiskIps}"
 
-          .install-ansible:
-              steps:
-                - install:
-                    action: execrun
-                    parameters:
-                        isSudo: true
-                        roles: [ "manager-node" ]
-                        command:
-                            - |
-                              apt-get install software-properties-common &&
-                              apt-add-repository ppa:ansible/ansible &&
-                              apt-get update &&
-                              apt-get install -y git ansible unzip
+          run-ansible:
+            steps:
+              - run:
+                  action: .run-ansible
 
-          .generate-ssh-key:
-              steps:
-                - generate:
-                    action: execrun
-                    parameters:
-                        roles: [ "manager-node" ]
-                        command:
-                            - |
-                              ssh-keygen -t rsa -N "" -f ~/.ssh/aws.key &&
-                              chmod 600 ~/.ssh/aws.key
+          update-playbooks:
+            parameters:
+              - playbooks-url:
+                  description: Playbooks url
+                  type: string
+            steps:
+              - update:
+                  action: .update-ansible-playbooks
+                  parameters:
+                      playbooks-url: "{$.playbooks-url}"
+
+          .provision-slave-nodes:
+            parameters:
+              - slaves-general-hardware-quantity:
+                  description: Quantity of general-purpose slaves
+                  type: int
+              - slaves-cpu-hardware-quantity:
+                  description: Quantity of slaves with cpu tag
+                  type: int
+              - slaves-memory-hardware-quantity:
+                  description: Quantity of slaves with memory tag
+                  type: int
+              - slaves-disk-hardware-quantity:
+                  description: Quantity of slaves with disk tag
+                  type: int
+            steps:
+              - provision-slaves-with-general-tag:
+                  action: .provision-nodes
+                  parameters:
+                    roleName: "mesos-general-slave"
+                    hardwareId: "{$.general_tag_hardware}"
+                    quantity: "{$.slaves-general-hardware-quantity}"
+                  output:
+                    slaveGeneralIps: ips
+                    slaveGeneralDns: dns
+              - provision-slaves-with-cpu-tag:
+                  action: .provision-nodes
+                  parameters:
+                    roleName: "mesos-cpu-slave"
+                    hardwareId: "{$.cpu_tag_hardware}"
+                    quantity: "{$.slaves-cpu-hardware-quantity}"
+                  output:
+                    slaveCpuIps: ips
+                    slaveCpuDns: dns
+              - provision-slaves-with-memory-tag:
+                  action: .provision-nodes
+                  parameters:
+                    roleName: "mesos-memory-slave"
+                    hardwareId: "{$.memory_tag_hardware}"
+                    quantity: "{$.slaves-memory-hardware-quantity}"
+                  output:
+                    slaveMemoryIps: ips
+                    slaveMemoryDns: dns
+              - provision-slaves-with-disk-tag:
+                  action: .provision-nodes
+                  parameters:
+                    roleName: "mesos-disk-slave"
+                    hardwareId: "{$.disk_tag_hardware}"
+                    quantity: "{$.slaves-disk-hardware-quantity}"
+                  output:
+                    slaveDiskIps: ips
+                    slaveDiskDns: dns
+            return:
+              slaveGeneralIps:
+                value: "{$.slaveGeneralIps}"
+              slaveCpuIps:
+                value: "{$.slaveCpuIps}"
+              slaveMemoryIps:
+                value: "{$.slaveMemoryIps}"
+              slaveDiskIps:
+                value: "{$.slaveDiskIps}"
 
           .prepare-masters-inventory-file:
-              parameters:
-                - serialized-masters-list:
-                    description: List with master ips
-              steps:
-                - prepare:
-                    action: execrun
-                    parameters:
-                      roles: [ "manager-node" ]
-                      command:
-                          - |
-                            if [[ ! -d ~/inventory ]]; then
-                              mkdir ~/inventory
-                            fi
-                            echo "[mesos_masters]" > ~/inventory/masters &&
-                            echo "{$.serialized-masters-list}" >> ~/inventory/masters &&
-                            echo "[mesos_masters:vars]" >> ~/inventory/masters &&
-                            echo "ansible_user=ubuntu" >> ~/inventory/masters &&
-                            echo "ansible_ssh_private_key_file=~/.ssh/aws.key" >> ~/inventory/masters
+            parameters:
+              - serialized-masters-list:
+                  description: List with master ips
+            steps:
+              - prepare:
+                  action: execrun
+                  parameters:
+                    roles: [ "manager-node" ]
+                    command:
+                      - |
+                        if [[ ! -d ~/inventory ]]; then
+                          mkdir ~/inventory
+                        fi
+                        echo "[mesos_masters]" > ~/inventory/masters &&
+                        echo "{$.serialized-masters-list}" >> ~/inventory/masters &&
+                        echo "[mesos_masters:vars]" >> ~/inventory/masters &&
+                        echo "ansible_user=ubuntu" >> ~/inventory/masters &&
+                        echo "ansible_ssh_private_key_file=~/.ssh/aws.key" >> ~/inventory/masters
 
           .prepare-slaves-inventory-file:
-              parameters:
-                - serialized-slaves-with-general-list:
-                    description: List with general slave ips
-                - serialized-slaves-with-cpu-list:
-                    description: List with cpu slave ips
-                - serialized-slaves-with-memory-list:
-                    description: List with memory slave ips
-                - serialized-slaves-with-disk-list:
-                    description: List with disk slave ips
-              steps:
-                - prepare:
-                    action: execrun
-                    parameters:
-                      roles: [ "manager-node" ]
-                      command:
-                          - |
-                            if [[ ! -d ~/inventory ]]; then
-                              mkdir ~/inventory
-                            fi
-                            echo "[mesos_workers:children]" > ~/inventory/slaves &&
-                            echo "mesos_general_instances" >> ~/inventory/slaves &&
-                            echo "mesos_cpu_instances" >> ~/inventory/slaves &&
-                            echo "mesos_memory_instances" >> ~/inventory/slaves &&
-                            echo "mesos_disk_instances" >> ~/inventory/slaves &&
-                            echo "[mesos_general_instances]" >> ~/inventory/slaves &&
-                            echo "{$.serialized-slaves-with-general-list}" >> ~/inventory/slaves &&
-                            echo "[mesos_cpu_instances]" >> ~/inventory/slaves &&
-                            echo "{$.serialized-slaves-with-cpu-list}" >> ~/inventory/slaves &&
-                            echo "[mesos_memory_instances]" >> ~/inventory/slaves &&
-                            echo "{$.serialized-slaves-with-memory-list}" >> ~/inventory/slaves &&
-                            echo "[mesos_disk_instances]" >> ~/inventory/slaves &&
-                            echo "{$.serialized-slaves-with-disk-list}" >> ~/inventory/slaves &&
-                            echo "[mesos_workers:vars]" >> ~/inventory/slaves  &&
-                            echo "ansible_user=ubuntu" >> ~/inventory/slaves &&
-                            echo "ansible_ssh_private_key_file=~/.ssh/aws.key" >> ~/inventory/slaves &&
-                            echo "[mesos_general_instances:vars]" >> ~/inventory/slaves &&
-                            echo "mesos_node_type=general" >> ~/inventory/slaves &&
-                            echo "[mesos_cpu_instances:vars]" >> ~/inventory/slaves &&
-                            echo "mesos_node_type=cpu-intensive" >> ~/inventory/slaves &&
-                            echo "[mesos_memory_instances:vars]" >> ~/inventory/slaves &&
-                            echo "mesos_node_type=memory-intensive" >> ~/inventory/slaves &&
-                            echo "[mesos_disk_instances:vars]" >> ~/inventory/slaves &&
-                            echo "mesos_node_type=disk-intensive" >> ~/inventory/slaves
+            parameters:
+              - serialized-slaves-with-general-list:
+                  description: List with general slave ips
+              - serialized-slaves-with-cpu-list:
+                  description: List with cpu slave ips
+              - serialized-slaves-with-memory-list:
+                  description: List with memory slave ips
+              - serialized-slaves-with-disk-list:
+                  description: List with disk slave ips
+            steps:
+              - prepare:
+                  action: execrun
+                  parameters:
+                    roles: [ "manager-node" ]
+                    command:
+                      - |
+                        if [[ ! -d ~/inventory ]]; then
+                          mkdir ~/inventory
+                        fi
+                        echo "[mesos_workers:children]" > ~/inventory/slaves &&
+                        echo "mesos_general_instances" >> ~/inventory/slaves &&
+                        echo "mesos_cpu_instances" >> ~/inventory/slaves &&
+                        echo "mesos_memory_instances" >> ~/inventory/slaves &&
+                        echo "mesos_disk_instances" >> ~/inventory/slaves &&
+                        echo "[mesos_general_instances]" >> ~/inventory/slaves &&
+                        echo "{$.serialized-slaves-with-general-list}" >> ~/inventory/slaves &&
+                        echo "[mesos_cpu_instances]" >> ~/inventory/slaves &&
+                        echo "{$.serialized-slaves-with-cpu-list}" >> ~/inventory/slaves &&
+                        echo "[mesos_memory_instances]" >> ~/inventory/slaves &&
+                        echo "{$.serialized-slaves-with-memory-list}" >> ~/inventory/slaves &&
+                        echo "[mesos_disk_instances]" >> ~/inventory/slaves &&
+                        echo "{$.serialized-slaves-with-disk-list}" >> ~/inventory/slaves &&
+                        echo "[mesos_workers:vars]" >> ~/inventory/slaves  &&
+                        echo "ansible_user=ubuntu" >> ~/inventory/slaves &&
+                        echo "ansible_ssh_private_key_file=~/.ssh/aws.key" >> ~/inventory/slaves &&
+                        echo "[mesos_general_instances:vars]" >> ~/inventory/slaves &&
+                        echo "mesos_node_type=general" >> ~/inventory/slaves &&
+                        echo "[mesos_cpu_instances:vars]" >> ~/inventory/slaves &&
+                        echo "mesos_node_type=cpu-intensive" >> ~/inventory/slaves &&
+                        echo "[mesos_memory_instances:vars]" >> ~/inventory/slaves &&
+                        echo "mesos_node_type=memory-intensive" >> ~/inventory/slaves &&
+                        echo "[mesos_disk_instances:vars]" >> ~/inventory/slaves &&
+                        echo "mesos_node_type=disk-intensive" >> ~/inventory/slaves
 
 
           .update-vars-file:
-              parameters:
-                - mesos-version:
-                    description: Mesos version
-                - mesos-package-version:
-                    description: Mesos package version
-                - marathon-version:
-                    description: Marathon version
-                - yaml-serialized-masters-list:
-                    description: Yaml formated master ips
-              steps:
-                - create-vars-file:
-                    action: execrun
-                    parameters:
-                        roles: [ "manager-node" ]
-                        command:
-                            - |
-                              echo "mesos_version: \"{$.mesos-version}\"" > params.yaml &&
-                              echo "mesos_package_version: \"{$.mesos-package-version}\"" >> params.yaml &&
-                              echo "marathon_version: \"{$.marathon-version}\"" >> params.yaml &&
-                              echo "mesos_master_hosts:" >> params.yaml &&
-                              echo "{$.yaml-serialized-masters-list}" >> params.yaml
+            parameters:
+              - mesos-version:
+                  description: Mesos version
+              - mesos-package-version:
+                  description: Mesos package version
+              - marathon-version:
+                  description: Marathon version
+              - yaml-serialized-masters-list:
+                  description: Yaml formated master ips
+            steps:
+              - create-vars-file:
+                  action: execrun
+                  parameters:
+                    roles: [ "manager-node" ]
+                    command:
+                      - |
+                        echo "mesos_version: \"{$.mesos-version}\"" > params.yaml &&
+                        echo "mesos_package_version: \"{$.mesos-package-version}\"" >> params.yaml &&
+                        echo "marathon_version: \"{$.marathon-version}\"" >> params.yaml &&
+                        echo "mesos_master_hosts:" >> params.yaml &&
+                        echo "{$.yaml-serialized-masters-list}" >> params.yaml
 
           .distribute-ssh-pub-key:
-              steps:
-                - get-ansible-ssh-pub-key:
-                    action: execrun
-                    parameters:
-                      roles: [ "manager-node" ]
-                      command:
-                          - |
-                            cat ~/.ssh/aws.key.pub
-                    output:
-                      ansible-pub-key: stdout
-                - distribute-ssh-pub-key:
-                    action: execrun
-                    precedingPhases: [ get-ansible-ssh-pub-key ]
-                    parameters:
-                      roles: [ "mesos-master", "mesos-general-slave", "mesos-cpu-slave", "mesos-memory-slave", "mesos-disk-slave" ]
-                      command:
-                          - |
-                            if [[ -z "`cat ~/.ssh/authorized_keys | grep "{$.ansible-pub-key[*][0]}"`" ]]; then
-                              echo "{$.ansible-pub-key[*][0]}" >> ~/.ssh/authorized_keys
-                            fi
+            steps:
+              - get-ansible-ssh-pub-key:
+                  action: execrun
+                  parameters:
+                    roles: [ "manager-node" ]
+                    command:
+                      - |
+                        cat ~/.ssh/aws.key.pub
+                  output:
+                    ansible-pub-key: stdout
+              - distribute-ssh-pub-key:
+                  action: execrun
+                  precedingPhases: [ get-ansible-ssh-pub-key ]
+                  parameters:
+                    roles: [ "mesos-master", "mesos-general-slave", "mesos-cpu-slave", "mesos-memory-slave", "mesos-disk-slave" ]
+                    command:
+                      - |
+                        if [[ -z "`cat ~/.ssh/authorized_keys | grep "{$.ansible-pub-key[*][0]}"`" ]]; then
+                          echo "{$.ansible-pub-key[*][0]}" >> ~/.ssh/authorized_keys
+                        fi
 
           .update-ansible-playbooks:
-              parameters:
-                - playbooks-url:
-                    description: URL to new zip file with playbooks
-              steps:
-                - update-playbooks:
-                    action: execrun
-                    parameters:
-                      roles: [ "manager-node" ]
-                      command:
-                          - |
-                            rm -rf --preserve-root playbooks.zip &&
-                            wget "{$.playbooks-url}" -O playbooks.zip &&
-                            folder=`echo "{$.playbooks-url}" | cut -d/ -f 5` &&
-                            branch=`echo "{$.playbooks-url}" | sed -n 's/\(.*\)archive\/\(.*\).zip/\2/p'` &&
-                            rm -rf --preserve-root ./ansible &&
-                            rm -rf $${{folder}}-$${{branch}} &&
-                            unzip playbooks.zip &&
-                            mv $${{folder}}-$${{branch}}/ansible ansible &&
-                            rm -rf $${{folder}}-$${{branch}} &&
-                            sudo ansible-galaxy install -r ansible/install_roles.yml &&
-                            sudo chown -R ubuntu:ubuntu .ansible .ansible_galaxy
+            parameters:
+              - playbooks-url:
+                  description: URL to new zip file with playbooks
+            steps:
+              - update-playbooks:
+                  action: execrun
+                  parameters:
+                    roles: [ "manager-node" ]
+                    command:
+                      - |
+                        rm -rf --preserve-root playbooks.zip &&
+                        wget "{$.playbooks-url}" -O playbooks.zip &&
+                        folder=`echo "{$.playbooks-url}" | cut -d/ -f 5` &&
+                        branch=`echo "{$.playbooks-url}" | sed -n 's/\(.*\)archive\/\(.*\).zip/\2/p'` &&
+                        rm -rf --preserve-root ./ansible &&
+                        rm -rf $${{folder}}-$${{branch}} &&
+                        unzip playbooks.zip &&
+                        mv $${{folder}}-$${{branch}}/ansible ansible &&
+                        rm -rf $${{folder}}-$${{branch}} &&
+                        sudo ansible-galaxy install -r ansible/install_roles.yml &&
+                        sudo chown -R ubuntu:ubuntu .ansible .ansible_galaxy
 
           .run-ansible:
-              steps:
-                - run-ansible:
-                    action: execrun
-                    parameters:
-                      roles: [ "manager-node" ]
-                      command:
-                          - |
-                            cd ansible &&
-                            ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i ../inventory ./playbook.yml --extra-vars "@../params.yaml"
+            steps:
+              - run-ansible:
+                  action: execrun
+                  parameters:
+                    roles: [ "manager-node" ]
+                    command:
+                      - |
+                        cd ansible &&
+                        ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i ../inventory ./playbook.yml --extra-vars "@../params.yaml"
 
           .serialize-slaves-list:
-              parameters:
-                - general-slave-ips:
-                    type: string
-                - cpu-slave-ips:
-                    type: string
-                - memory-slave-ips:
-                    type: string
-                - disk-slave-ips:
-                    type: string
-              steps:
-                - serialize-slaves-with-general-list:
-                    action: .serialize-list
-                    parameters:
-                        arg: "{$.general-slave-ips}"
-                    output:
-                        serialized-slaves-with-general-list: as-csv
+            parameters:
+              - general-slave-ips:
+                  type: string
+              - cpu-slave-ips:
+                  type: string
+              - memory-slave-ips:
+                  type: string
+              - disk-slave-ips:
+                  type: string
+            steps:
+              - serialize-slaves-with-general-list:
+                  action: .serialize-list
+                  parameters:
+                    arg: "{$.general-slave-ips}"
+                  output:
+                    serialized-slaves-with-general-list: as-csv
 
-                - serialize-slaves-with-cpu-list:
-                    action: .serialize-list
-                    parameters:
-                        arg: "{$.cpu-slave-ips}"
-                    output:
-                        serialized-slaves-with-cpu-list: as-csv
+              - serialize-slaves-with-cpu-list:
+                  action: .serialize-list
+                  parameters:
+                    arg: "{$.cpu-slave-ips}"
+                  output:
+                    serialized-slaves-with-cpu-list: as-csv
 
-                - serialize-slaves-with-memory-list:
-                    action: .serialize-list
-                    parameters:
-                        arg: "{$.memory-slave-ips}"
-                    output:
-                        serialized-slaves-with-memory-list: as-csv
+              - serialize-slaves-with-memory-list:
+                  action: .serialize-list
+                  parameters:
+                    arg: "{$.memory-slave-ips}"
+                  output:
+                    serialized-slaves-with-memory-list: as-csv
 
-                - serialize-slaves-with-disk-list:
-                    action: .serialize-list
-                    parameters:
-                        arg: "{$.disk-slave-ips}"
-                    output:
-                        serialized-slaves-with-disk-list: as-csv
-              return:
-                serialized-slaves-with-general-list:
-                  value: "{$.serialized-slaves-with-general-list}"
-                serialized-slaves-with-cpu-list:
-                  value: "{$.serialized-slaves-with-cpu-list}"
-                serialized-slaves-with-memory-list:
-                  value: "{$.serialized-slaves-with-memory-list}"
-                serialized-slaves-with-disk-list:
-                  value: "{$.serialized-slaves-with-disk-list}"
+              - serialize-slaves-with-disk-list:
+                  action: .serialize-list
+                  parameters:
+                    arg: "{$.disk-slave-ips}"
+                  output:
+                    serialized-slaves-with-disk-list: as-csv
+            return:
+              serialized-slaves-with-general-list:
+                value: "{$.serialized-slaves-with-general-list}"
+              serialized-slaves-with-cpu-list:
+                value: "{$.serialized-slaves-with-cpu-list}"
+              serialized-slaves-with-memory-list:
+                value: "{$.serialized-slaves-with-memory-list}"
+              serialized-slaves-with-disk-list:
+                value: "{$.serialized-slaves-with-disk-list}"
 
           .serialize-list:
-              parameters:
-                - arg:
-                    description: Argument to serialize
-              steps:
-                - serialize-as-csv:
-                    action: serialize
-                    parameters:
-                        format: CSV
-                        input: "{$.arg}"
-                    output:
-                        serialized-as-csv: serialized
-                - serialize-as-yaml:
-                    action: serialize
-                    parameters:
-                        format: yaml
-                        input: "{$.arg}"
-                    output:
-                        serialized-as-yaml: serialized
-              return:
-                as-csv:
-                  value: "{$.serialized-as-csv}"
-                as-yaml:
-                  value: "{$.serialized-as-yaml}"
+            parameters:
+              - arg:
+                  description: Argument to serialize
+            steps:
+              - serialize-as-csv:
+                  action: serialize
+                  parameters:
+                    format: CSV
+                    input: "{$.arg}"
+                  output:
+                    serialized-as-csv: serialized
+              - serialize-as-yaml:
+                  action: serialize
+                  parameters:
+                    format: yaml
+                    input: "{$.arg}"
+                  output:
+                    serialized-as-yaml: serialized
+            return:
+              as-csv:
+                value: "{$.serialized-as-csv}"
+              as-yaml:
+                value: "{$.serialized-as-yaml}"
 
           .provision-nodes:
-              parameters:
-                - roleName:
-                    description: Role for the provisioned node
-                - hardwareId:
-                    description: HardwareId
-                - quantity:
-                    description: Number of nodes to start
-              steps:
-                - provision-node:
-                    action: provisionAmazonVm
-                    phase: provision
-                    parameters:
-                      roleName: "{$.roleName}"
-                      imageId: "{$.ami}"
-                      vmIdentity: "{$.identity}"
-                      hardwareId: "{$.hardwareId}"
-                      targetQuantity: "{$.quantity}"
-                    output:
-                      PublicIPs: ips
-                - set-hostname:
-                    action: execrun
-                    phase: post-provision
-                    precedingPhases: [ provision ]
-                    parameters:
-                      isSudo: true
-                      roles: [ "{$.roleName}" ]
-                      command:
-                          - |
-                            hostname `curl -s http://169.254.169.254/latest/meta-data/public-hostname` &&
-                            echo "`hostname -i`   `hostname`" >> /etc/hosts &&
-                            hostname
-                    output:
-                      dns: stdout
-              return:
-                ips:
-                  value: "{$.PublicIPs}"
-                dns:
-                  value: "{$.dns}"
-
-    marathon:
-      type: reference.Submodule
-      configuration:
-        __locator.application-id: "Mesos/Marathon Manager"
-      required: [marathon-manager]
-
-      interfaces:
-        marathon-manager:
-          Mesos_Manager: consume-signal(string)
-          Marathon_URL: consume-signal(string)
-          scripts_url: consume-signal(string)
-        actions:
-          list-applications:
-            type: receive-command()
-            name: List running applications
-          application-details:
-            type: receive-command(string application-id)
-            name: Get running application details
-          create-application:
-            type: receive-command(string application-id, string serialized-descriptor)
-            name: Create/run new application
-          update-application:
-            type: receive-command(string application-id, string serialized-descriptor)
-            name: Update running application
-          destroy-application:
-            type: receive-command(string application-id)
-            name: Delete application
-          restart-application:
-            type: receive-command(string application-id)
-            name: Restart running application
+            parameters:
+              - roleName:
+                  description: Role for the provisioned node
+              - hardwareId:
+                  description: HardwareId
+              - quantity:
+                  description: Number of nodes to start
+            steps:
+              - provision-node:
+                  action: provisionAmazonVm
+                  phase: provision
+                  parameters:
+                    roleName: "{$.roleName}"
+                    imageId: "{$.ami}"
+                    vmIdentity: "{$.identity}"
+                    hardwareId: "{$.hardwareId}"
+                    targetQuantity: "{$.quantity}"
+                  output:
+                    PublicIPs: ips
+              - set-hostname:
+                  action: execrun
+                  phase: post-provision
+                  precedingPhases: [ provision ]
+                  parameters:
+                    isSudo: true
+                    roles: [ "{$.roleName}" ]
+                    command:
+                      - |
+                        hostname `curl -s http://169.254.169.254/latest/meta-data/public-hostname` &&
+                        echo "`hostname -i`   `hostname`" >> /etc/hosts &&
+                        hostname
+                  output:
+                    dns: stdout
+            return:
+              ips:
+                value: "{$.PublicIPs}"
+              dns:
+                value: "{$.dns}"

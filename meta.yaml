@@ -4,10 +4,6 @@ kit:
   applications:
     - name: "Mesos cluster"
       manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/manifests/mesos-cluster.yml
-    - name: "Mesos/Marathon Manager"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/manifests/manager.yml
-    - name: "Scripting Service"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/manifests/scripting-service.yml
     - name: "In-stream environment on marathon"
       manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/manifests/environment.yml
     - name: "In-stream environment on marathon Factory"

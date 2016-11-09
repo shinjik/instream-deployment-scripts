@@ -3,39 +3,39 @@ kit:
   link: https://github.com/shinjik/instream-deployment-scripts
   applications:
     - name: "Mesos cluster"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/manifests/mesos-cluster.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/components/manifests/mesos-cluster.yml
     - name: "In-stream environment on marathon"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/manifests/environment.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/components/manifests/environment.yml
     - name: "In-stream environment on marathon Factory"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/manifests/environment-factory.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/components/manifests/environment-factory.yml
     - name: "ISP web UI on marathon"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/manifests/webui.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/components/manifests/webui.yml
     - name: "ISP web UI on marathon Factory"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/manifests/webui-factory.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/components/manifests/webui-factory.yml
     - name: "Cassandra on marathon"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/manifests/cassandra.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/components/manifests/cassandra.yml
     - name: "Cassandra on marathon Factory"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/manifests/cassandra-factory.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/components/manifests/cassandra-factory.yml
     - name: "Kafka on marathon"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/manifests/kafka.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/components/manifests/kafka.yml
     - name: "Kafka on marathon Factory"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/manifests/kafka-factory.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/components/manifests/kafka-factory.yml
     - name: "Marathon Application"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/manifests/marathon-application.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/components/manifests/marathon-application.yml
     - name: "Marathon Application Factory"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/manifests/marathon-application-factory.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/components/manifests/marathon-application-factory.yml
     - name: "Redis on marathon"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/manifests/redis.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/components/manifests/redis.yml
     - name: "Redis on marathon Factory"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/manifests/redis-factory.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/components/manifests/redis-factory.yml
     - name: "Zookeeper on marathon"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/manifests/zookeeper.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/components/manifests/zookeeper.yml
     - name: "Zookeeper on marathon Factory"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/manifests/zookeeper-factory.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/components/manifests/zookeeper-factory.yml
     - name: "Spark on marathon"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/manifests/spark.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/components/manifests/spark.yml
     - name: "Spark on marathon Factory"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/manifests/spark-factory.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/components/manifests/spark-factory.yml
     - name: "Docker Service"
       manifest: https://raw.github.com/qubell-bazaar/docker/master/docker.yml
     - name: "Scripting Service on Docker"

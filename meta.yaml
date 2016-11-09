@@ -40,6 +40,11 @@ kit:
       manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/manifests/spark.yml
     - name: "Spark on marathon Factory"
       manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/manifests/spark-factory.yml
+    - name: "Docker Service"
+      manifest: https://raw.github.com/qubell-bazaar/docker/master/docker.yml
+    - name: "Scripting Service on Docker"
+      manifest: https://raw.github.com/qubell-bazaar/component-docker-scripting/master/scripting.yml
+
   provider:
     name: Grid Dynamics
     link: https://griddynamics.com

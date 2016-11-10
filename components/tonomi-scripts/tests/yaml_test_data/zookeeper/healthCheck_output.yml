@@ -1,0 +1,32 @@
+instances:
+  '/new-zookeeper':
+    instanceId: '/new-zookeeper'
+    name: '/new-zookeeper'
+    status:
+      flags:
+        active: true
+        converging: false
+        failed: false
+    interfaces:
+      compute:
+        signals:
+          ram: 256
+          cpu: 0.5
+          disk: 256
+      zookeeper:
+        signals:
+          zookeeper-hosts: ['127.0.0.1', '127.0.0.2', '127.0.0.3']
+          zookeeper-ports: [31001, 31002, 31003]
+    components:
+      zookeeper-1:
+        reference:
+          mapping: 'apps.app-by-id'
+          key: '/new-zookeeper/zookeeper-1'
+      zookeeper-2:
+        reference:
+          mapping: 'apps.app-by-id'
+          key: '/new-zookeeper/zookeeper-2'
+      zookeeper-3:
+        reference:
+          mapping: 'apps.app-by-id'
+          key: '/new-zookeeper/zookeeper-3'

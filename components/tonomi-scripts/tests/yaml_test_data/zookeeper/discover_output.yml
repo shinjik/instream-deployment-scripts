@@ -1,0 +1,13 @@
+instances:
+  '/new-zookeeper':
+    name: '/new-zookeeper'
+    interfaces:
+      info:
+        signals:
+          app-id: '/new-zookeeper'
+  '/sandbox/zookeeper':
+    name: '/sandbox/zookeeper'
+    interfaces:
+      info:
+        signals:
+          app-id: '/sandbox/zookeeper'

@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import unittest
 from common.marathon_fake_methods import *
 from common.common_test import TestCommon
@@ -26,13 +28,10 @@ class TestCassandraScripts(unittest.TestCase, TestCommon):
     self.check_script(DISCOVER_ACTION)
     self.assertEqual(1, len(list_apps.mock_calls))
 
-  # @patch('marathon.MarathonClient.list_apps')
   @patch('marathon.MarathonClient.get_app')
   def test_health_check(self, get_app):
-    # list_apps.return_value = cassandra_health_check_list_apps()
     get_app.side_effect = cassandra_health_check_get_app()
     self.check_script(HEALTH_CHECK_ACTION)
-    # self.assertEqual(2, len(list_apps.mock_calls))
     self.assertEqual(1, len(get_app.mock_calls))
 
   @patch('marathon.MarathonClient.delete_group')

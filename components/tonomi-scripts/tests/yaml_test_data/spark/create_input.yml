@@ -1,0 +1,12 @@
+configuration:
+  configuration.marathonURL: 'http://localhost'
+launch-instances:
+  1234567:
+    configuration:
+      configuration.name: '/new-spark'
+      configuration.kafka-host: '127.0.0.1'
+      configuration.kafka-port: 31001
+      configuration.cassandra-host: '127.0.0.2'
+      configuration.cassandra-port: 31002
+      configuration.redis-host: '127.0.0.3'
+      configuration.redis-port: 31003

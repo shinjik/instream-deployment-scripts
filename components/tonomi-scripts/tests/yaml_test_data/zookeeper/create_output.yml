@@ -1,0 +1,7 @@
+instances:
+  '/new-zookeeper':
+    instanceId: 1234567
+    name: '/new-zookeeper'
+    $set:
+      status.flags.active: false
+      status.flags.converging: true

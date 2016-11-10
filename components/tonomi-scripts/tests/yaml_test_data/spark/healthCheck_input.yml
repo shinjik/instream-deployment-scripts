@@ -1,5 +1,4 @@
 configuration:
   configuration.marathonURL: 'http://localhost'
 instances:
-  '/new-kafka':
-  '/sandbox/kafka':
+  '/sandbox/spark':

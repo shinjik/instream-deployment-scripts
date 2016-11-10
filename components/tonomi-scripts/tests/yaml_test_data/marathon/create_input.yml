@@ -5,11 +5,11 @@ launch-instances:
     configuration:
       configuration.group: ''
       configuration.name: '/sample'
-      configuration.portMappings: []
-      configuration.labels: []
       configuration.cmd: 'python -m SimpleHTTPServer'
       configuration.cpu: '0.5'
       configuration.ram: 256
-      configuration.disk: 256
+      configuration.disk: 0
       configuration.instances: 1
       configuration.imageId: 'python'
+      configuration.portMappings: [{"containerPort": 8080, "hostPort": 0, "servicePort": 10001}]
+      configuration.labels: [{"app": "python"}]

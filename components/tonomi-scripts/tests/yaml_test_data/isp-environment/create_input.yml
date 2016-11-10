@@ -1,0 +1,6 @@
+configuration:
+  configuration.marathonURL: 'http://localhost'
+launch-instances:
+  1234567:
+    configuration:
+      configuration.name: '/sandbox'

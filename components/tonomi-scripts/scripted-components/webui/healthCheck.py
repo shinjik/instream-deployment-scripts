@@ -11,7 +11,7 @@ instances = {}
 
 for instance_name in args['instances'].keys():
 
-  # try:
+  try:
     app = marathon_client.get_app('{}/webui-app'.format(instance_name))
 
     status = {
@@ -47,7 +47,7 @@ for instance_name in args['instances'].keys():
       'ui': {
         'reference': {
           'mapping': 'apps.app-by-id',
-          'key': '{}/{}'.format(app.id, 'webui-app')
+          'key': '{}'.format(app.id)
         }
       }
     }
@@ -59,15 +59,15 @@ for instance_name in args['instances'].keys():
       'interfaces': interfaces,
       'components': components,
     }
-  # except:
-  #   app_statuses[tonomi_app_name] = {
-  #     'status': {
-  #       'flags': {
-  #         'active': False,
-  #         'converging': False,
-  #         'failed': False
-  #       }
-  #     }
-  #   }
+  except:
+    app_statuses[tonomi_app_name] = {
+      'status': {
+        'flags': {
+          'active': False,
+          'converging': False,
+          'failed': False
+        }
+      }
+    }
 
 return_instances_info(instances)

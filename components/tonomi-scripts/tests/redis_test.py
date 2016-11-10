@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import unittest
 from common.marathon_fake_methods import *
 from common.common_test import TestCommon

@@ -32,14 +32,14 @@ for instance_name in args['instances'].keys():
       },
       'spark': {
         'signals': {
-          'hosts': [],
-          'load-balancer-port': '123'
+          'hosts': [task.host for task in app.tasks],
+          'load-balancer-port': app.container.docker.port_mappings[2].service_port
         }
       }
     }
 
     components = {
-      'spark-worker': {
+      'spark': {
         'reference': {
           'mapping': 'apps.app-by-id',
           'key': app.id

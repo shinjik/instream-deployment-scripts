@@ -1,0 +1,7 @@
+instances:
+  '/new-spark':
+    instanceId: 1234567
+    name: '/new-spark'
+    $set:
+      status.flags.active: false
+      status.flags.converging: true

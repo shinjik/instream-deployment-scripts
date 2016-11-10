@@ -9,7 +9,7 @@ args = parse_args()
 marathon_client = get_marathon_client(args)
 instances = {}
 
-for instance_name in args['instances'].keys():
+for instance_name in sorted(args['instances'].keys()):
   try:
     app = marathon_client.get_app('{}/kafka-broker'.format(instance_name))
 
@@ -33,7 +33,7 @@ for instance_name in args['instances'].keys():
       'kafka': {
         'signals': {
           'kafka-hosts': [task.host for task in app.tasks],
-          'kafka-port': app.env['KAFKA_PORT']
+          'kafka-port': int(app.env['KAFKA_PORT'])
         }
       }
     }

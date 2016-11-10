@@ -4,3 +4,6 @@ launch-instances:
   1234567:
     configuration:
       configuration.name: '/new-kafka'
+      configuration.port: 31001
+      configuration.zookeeper-host: '127.0.0.1'
+      configuration.zookeeper-port: 31002

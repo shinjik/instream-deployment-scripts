@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import unittest
 from common.constants import *
 from common.common_test import *
@@ -11,9 +13,11 @@ class TestKafkaScripts(unittest.TestCase, TestCommon):
   def setUp(self):
     self.prepare_constants(KAFKA_APP)
 
-  @unittest.skip('not implemented yet')
-  def test_launch(self):
-    pass
+  @patch('requests.Session.request')
+  def test_launch(self, request):
+    request.return_value = MagicMock(status_code=201)
+    self.check_script(CREATE_ACTION)
+    self.assertEqual(1, len(request.mock_calls))
 
   @patch('marathon.MarathonClient.list_apps')
   def test_discover(self, list_apps):
@@ -21,9 +25,11 @@ class TestKafkaScripts(unittest.TestCase, TestCommon):
     self.check_script(DISCOVER_ACTION)
     self.assertEqual(1, len(list_apps.mock_calls))
 
-  @unittest.skip('not implemented yet')
-  def test_health_check(self):
-    pass
+  @patch('marathon.MarathonClient.get_app')
+  def test_health_check(self, get_app):
+    get_app.side_effect = kafka_health_check_get_app()
+    self.check_script(HEALTH_CHECK_ACTION)
+    self.assertEqual(2, len(get_app.mock_calls))
 
   @patch('marathon.MarathonClient.delete_group')
   def test_destroy(self, delete_group):

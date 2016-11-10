@@ -11,8 +11,8 @@ marathon_node_hostname = marathon_client.servers[0].split(':')[1][2:]
 instances = {}
 
 for env_app in args['instances'].keys():
-  try:
-    marathon_client.get_group(env_app)
+  # try:
+    env = marathon_client.get_group(env_app)
 
     status = {
       'flags': {
@@ -21,8 +21,6 @@ for env_app in args['instances'].keys():
         'failed': False
       }
     }
-
-    env = marathon_client.get_group(env_app)
 
     interfaces = {}
     components = {}
@@ -37,7 +35,7 @@ for env_app in args['instances'].keys():
         interfaces[app_type] = {
           'signals': {
             'zookeeper-hosts': [],
-            'zookeeper-port': app.env['ZOO_PORT']
+            'zookeeper-port': int(app.env['ZOO_PORT'])
           }
         }
       elif app_type == 'redis':
@@ -45,7 +43,7 @@ for env_app in args['instances'].keys():
           'signals': {
             'master-hosts': [],
             'slave-hosts': [],
-            'port': app.env['REDIS_PORT']
+            'port': int(app.env['REDIS_PORT'])
           }
         }
       elif app_type == 'cassandra':
@@ -53,18 +51,18 @@ for env_app in args['instances'].keys():
           'signals': {
             'seed-hosts': [],
             'node-hosts': [],
-            'jmx-port': app.labels['_jmx_port'],
-            'internode-communication-port': app.labels['_internode_communication_port'],
-            'tls-internode-commucation-port': app.labels['_tls_internode_communication_port'],
-            'thrift-client-port': app.labels['_thrift_client_port'],
-            'cql-native-port': app.labels['_cql_native_port']
+            'jmx-port': int(app.labels['_jmx_port']),
+            'internode-communication-port': int(app.labels['_internode_communication_port']),
+            'tls-internode-commucation-port': int(app.labels['_tls_internode_communication_port']),
+            'thrift-client-port': int(app.labels['_thrift_client_port']),
+            'cql-native-port': int(app.labels['_cql_native_port'])
           }
         }
       elif app_type == 'kafka':
         interfaces[app_type] = {
           'signals': {
             'kafka-hosts': [task.host for task in app.tasks],
-            'kafka-port': app.env['KAFKA_PORT']
+            'kafka-port': int(app.env['KAFKA_PORT'])
           }
         }
       elif app_type == 'webui':
@@ -72,7 +70,7 @@ for env_app in args['instances'].keys():
 
         interfaces[app_type] = {
           'signals': {
-            'load-balancer-port': service_port,
+            'load-balancer-port': int(service_port),
             'link': 'http://{}:{}'.format(marathon_node_hostname, service_port),
             'hosts': [task.host for task in app.tasks]
           }
@@ -108,15 +106,15 @@ for env_app in args['instances'].keys():
       'interfaces': interfaces,
       'components': components,
     }
-  except:
-    instances[env_app] = {
-      'status': {
-        'flags': {
-          'active': False,
-          'converging': False,
-          'failed': False
-        }
-      }
-    }
+  # except:
+  #   instances[env_app] = {
+  #     'status': {
+  #       'flags': {
+  #         'active': False,
+  #         'converging': False,
+  #         'failed': False
+  #       }
+  #     }
+  #   }
 
 return_instances_info(instances)

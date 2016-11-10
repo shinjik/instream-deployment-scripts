@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import json
 import unittest
 from common.constants import *
@@ -11,9 +13,11 @@ class TestMarathonScripts(unittest.TestCase, TestCommon):
   def setUp(self):
     self.prepare_constants(MARATHON_APP)
 
-  @unittest.skip('not implemented yet')
+  @patch('requests.Session.request')
   def test_launch(self, request):
-    pass
+    request.return_value = MagicMock(status_code=201)
+    self.check_script(CREATE_ACTION)
+    self.assertEqual(1, len(request.mock_calls))
 
   @patch('marathon.MarathonClient.list_apps')
   def test_discover(self, list_apps):
@@ -41,6 +45,7 @@ class TestMarathonScripts(unittest.TestCase, TestCommon):
   def test_restart(self, restart_app):
     self.check_script(RESTART_ACTION)
     self.assertEqual(1, len(restart_app.mock_calls))
+
 
 if __name__ == '__main__':
   unittest.main()

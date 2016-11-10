@@ -1,0 +1,6 @@
+instances:
+  '/new-zookeeper':
+    $set:
+      status.flags.active: false
+      status.flags.converging: false
+      status.flags.failed: false

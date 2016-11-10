@@ -1,0 +1,7 @@
+configuration:
+  configuration.marathonURL: 'http://localhost'
+launch-instances:
+  1234567:
+    configuration:
+      configuration.name: '/new-zookeeper'
+      configuration.ports: [31001, 31002, 31003]

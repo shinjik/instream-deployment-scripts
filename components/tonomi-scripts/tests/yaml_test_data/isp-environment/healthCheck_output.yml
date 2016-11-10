@@ -1,0 +1,69 @@
+instances:
+  '/sandbox':
+    instanceId: '/sandbox'
+    name: '/sandbox'
+    status:
+      flags:
+        active: true
+        converging: false
+        failed: false
+    interfaces:
+      zookeeper:
+        signals:
+          zookeeper-hosts: []
+          zookeeper-port: 10001
+      redis:
+        signals:
+          master-hosts: []
+          slave-hosts: []
+          port: 20001
+      cassandra:
+        signals:
+          seed-hosts: []
+          node-hosts: []
+          jmx-port: 30001
+          internode-communication-port: 30002
+          tls-internode-commucation-port: 30003
+          thrift-client-port: 30004
+          cql-native-port: 30005
+      kafka:
+        signals:
+          kafka-hosts: []
+          kafka-port: 60001
+      webui:
+        signals:
+          load-balancer-port: 90001
+          link: 'http://localhost:90001'
+          hosts: []
+      spark:
+        signals:
+          hosts: []
+          web-interface: 'http://localhost:80001'
+      application-entrypoint:
+        signals:
+          URL: 'http://localhost:90001'
+    components:
+      zookeeper:
+        reference:
+          mapping: 'zookeeper.zookeeper-by-id'
+          key: '/sandbox/zookeeper'
+      redis:
+        reference:
+          mapping: 'redis.redis-by-id'
+          key: '/sandbox/redis'
+      cassandra:
+        reference:
+          mapping: 'cassandra.cassandra-by-id'
+          key: '/sandbox/cassandra'
+      kafka:
+        reference:
+          mapping: 'kafka.kafka-by-id'
+          key: '/sandbox/kafka'
+      webui:
+        reference:
+          mapping: 'webui.webui-by-id'
+          key: '/sandbox/webui'
+      spark:
+        reference:
+          mapping: 'spark.spark-by-id'
+          key: '/sandbox/spark'

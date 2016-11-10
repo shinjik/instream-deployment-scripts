@@ -1,0 +1,25 @@
+instances:
+  '/sandbox/spark':
+    instanceId: '/sandbox/spark'
+    name: '/sandbox/spark'
+    status:
+      flags:
+        active: true
+        converging: false
+        failed: false
+    interfaces:
+      compute:
+        signals:
+          ram: 256
+          cpu: 0.5
+          disk: 256
+          instances: 1
+      spark:
+        signals:
+          load-balancer-port: 10003
+          hosts: ['127.0.0.1']
+    components:
+      spark:
+        reference:
+          mapping: 'apps.app-by-id'
+          key: '/sandbox/spark/spark-app'

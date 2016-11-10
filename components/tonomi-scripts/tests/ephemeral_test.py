@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from marathon import MarathonClient
 from unittest.mock import patch
 import unittest

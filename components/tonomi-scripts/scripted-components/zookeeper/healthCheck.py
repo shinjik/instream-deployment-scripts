@@ -20,28 +20,7 @@ for instance_name in args['instances'].keys():
     follower_conn_port = nodes[0].labels['_follower_conn_port']
     server_conn_port = nodes[0].labels['_server_conn_port']
 
-    # reconfigure cluster nodes
-    # active_apps = []
-    # for node in nodes:
-    #   if node.tasks_running > 0:
-    #     active_apps.append((node.id, node.id.split('-')[1], node.tasks[0].host))
-    #
-    # zoo_servers = ''
-    #
-    # for node_id, index, host in active_apps:
-    #   zoo_servers += 'server.{}={}:{}:{} '.format(index, host, follower_conn_port, server_conn_port)
-    #
-    # new_cmd = 'export ZOO_SERVERS="{}" && /docker-entrypoint.sh zkServer.sh start-foreground'.format(zoo_servers)
-    #
-    # for node_id, index, host in active_apps:
-    #   constraints = [MarathonConstraint(field='hostname', operator='LIKE', value=host)]
-    #   app = marathon_client.get_app(node_id)
-    #   if app.cmd != new_cmd:
-    #     app.cmd = new_cmd
-    #     app.constraints = constraints
-    #     marathon_client.update_app(node_id, app, True)
-
-    node_app = marathon_client.get_app('{}/zookeeper-1'.format(instance_name))
+    node_app = nodes[0]
 
     status = {
       'flags': {
@@ -68,20 +47,21 @@ for instance_name in args['instances'].keys():
       },
       'zookeeper': {
         'signals': {
-          'zookeeper-hosts': list(set(zookeeper_hosts)),
+          'zookeeper-hosts': zookeeper_hosts,
           'zookeeper-ports': [client_conn_port, follower_conn_port, server_conn_port]
         }
       }
     }
 
-    components = {
-      'zookeeper-node': {
+    components = {}
+
+    for node in nodes:
+      components['zookeeper-{}'.format(node.id.split('-')[-1])] = {
         'reference': {
           'mapping': 'apps.app-by-id',
-          'key': '{}/zookeeper'.format(instance_name)
+          'key': '{}'.format(node.id)
         }
       }
-    }
 
     instances[instance_name] = {
       'instanceId': instance_name,

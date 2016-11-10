@@ -1,0 +1,13 @@
+instances:
+  '/sandbox':
+    name: '/sandbox'
+    interfaces:
+      info:
+        signals:
+          app-id: '/sandbox'
+  '/test':
+    name: '/test'
+    interfaces:
+      info:
+        signals:
+          app-id: '/test'

@@ -1,0 +1,5 @@
+instances:
+  '/new-spark':
+    $set:
+      status.flags.active: false
+      status.flags.converging: false

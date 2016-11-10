@@ -3,7 +3,7 @@ kit:
   link: https://github.com/shinjik/instream-deployment-scripts
   applications:
     - name: "Mesos cluster"
-      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/components/manifests/mesos-cluster.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/mesos-cluster/manifest.yml
     - name: "In-stream environment on marathon"
       manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/components/manifests/environment.yml
     - name: "In-stream environment on marathon Factory"

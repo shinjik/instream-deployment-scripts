@@ -2,7 +2,7 @@
 
 import sys
 import yaml
-from lambdas import *
+from utils import *
 from models import *
 import time
 

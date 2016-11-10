@@ -2,7 +2,7 @@
 
 import sys
 import yaml
-from lambdas import *
+from utils import *
 from models import *
 
 args = parse_args()
@@ -10,7 +10,7 @@ manager = MarathonManager(get_marathon_url(args))
 instances = {}
 
 for instance_id, app in args['launch-instances'].items():
-  instance_name = get_name_from_configuration(app)
+  instance_name = get_name_from_conf(app)
   cassandra_host, cassandra_port = get_cassandra_conf(app)
   service_port = get_conf_prop(app, 'service-port')
 

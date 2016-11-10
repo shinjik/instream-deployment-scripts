@@ -2,7 +2,7 @@
 
 import sys
 import yaml
-from lambdas import *
+from utils import *
 from models import *
 
 args = parse_args()

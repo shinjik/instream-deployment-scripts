@@ -30,11 +30,6 @@ class TestCommon(object):
   def check_script(self, action):
     input_obj, output_obj = self.get_yaml_obj(action)
     script_result = self.run_script(self.get_script(action), input_obj)
-
-    # print(output_obj)
-    # print()
-    # print(script_result)
-
     self.check_responses(output_obj, script_result)
 
   def get_script(self, action):

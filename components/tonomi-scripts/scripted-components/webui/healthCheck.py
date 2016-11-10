@@ -3,7 +3,7 @@
 import sys
 import yaml
 from marathon import MarathonClient
-from lambdas import *
+from utils import *
 
 args = parse_args()
 marathon_client = get_marathon_client(args)

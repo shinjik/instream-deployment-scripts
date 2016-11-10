@@ -2,7 +2,7 @@ from marathon import MarathonClient
 from marathon.models import MarathonApp, MarathonConstraint, MarathonHealthCheck
 from marathon.models.container import *
 from marathon.models.app import PortDefinition, Residency
-from lambdas import *
+from utils import *
 import time
 
 

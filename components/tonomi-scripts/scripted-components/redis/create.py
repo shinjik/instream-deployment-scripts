@@ -6,7 +6,7 @@ from marathon import MarathonClient
 from marathon.models import MarathonApp, MarathonConstraint
 from marathon.models.app import PortDefinition, Residency
 from marathon.models.container import *
-from lambdas import *
+from utils import *
 from models import *
 
 args = parse_args()
@@ -14,7 +14,7 @@ manager = MarathonManager(get_marathon_url(args))
 instances = {}
 
 for instance_id, app in args['launch-instances'].items():
-  instance_name = get_name_from_configuration(app)
+  instance_name = get_name_from_conf(app)
   port = get_redis_port(app)
 
   redis = Redis(name=instance_name, port=port)

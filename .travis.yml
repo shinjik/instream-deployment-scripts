@@ -1,0 +1,27 @@
+sudo: required
+language: python
+services:
+  - docker
+python:
+  - '3.5'
+install:
+  # for both repo
+  - 'pip3 install yamllint'
+  # for components repo
+  - 'pip3 install -r components/tonomi-scripts/scripted-components/requirements.txt'
+  - 'pip3 install -r components/tonomi-scripts/tests/requirements.txt'
+  # for mesos repo
+  - 'pip3 install ansible'
+before_script:
+  # for components repo
+  - 'yamllint components/manifests/* -d "{extends: relaxed, rules: {line-length: {max: 300}, colons: {max-spaces-after: 100}, trailing-spaces: disable}}"'
+  # for mesos repo
+  - 'yamllint mesos-cluster/install-roles.yml mesos-cluster/playbook.yml -d relaxed'
+  - 'yamllint mesos-cluster/mesos-cluster.yml -d "{extends: relaxed, rules: {line-length: {max: 300}, colons: {max-spaces-after: 100}, trailing-spaces: disable}}"'
+  - 'ansible-galaxy install -p ./ansible-roles -r mesos-cluster/install-roles.yml'
+script:
+  # for components repo
+  - 'cd components && python3 tonomi-scripts/tests/run_tests.py'
+after_script:
+  # for components repo
+  - 'docker build -t isp-tonomi:0.1 tonomi-scripts'

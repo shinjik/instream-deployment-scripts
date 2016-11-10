@@ -127,7 +127,7 @@ application:
               - get-signals:
                   action: getSignals
                   output:
-                      signals: result
+                    signals: result
               - provision-vm:
                   action: provisionAmazonVm
                   precedingPhases: [ get-signals ]
@@ -725,73 +725,73 @@ application:
                   value: "{$.ips-size[*][0]}"
 
           .get-slave-ips-to-destroy-batch:
-              parameters:
-                - current-general-ips-serialized:
-                    type: list
-                - destroy-general-quantity:
-                    type: int
-                - current-cpu-ips-serialized:
-                    type: list
-                - destroy-cpu-quantity:
-                    type: int
-                - current-memory-ips-serialized:
-                    type: list
-                - destroy-memory-quantity:
-                    type: int
-                - current-disk-ips-serialized:
-                    type: list
-                - destroy-disk-quantity:
-                    type: int
-              steps:
-                - get-general-ips-to-destroy:
-                    action: .get-slave-ips-to-destroy
-                    parameters:
-                      current-ips-serialized: "{$.current-general-ips-serialized}"
-                      destroy-quantity: "{$.destroy-general-quantity}"
-                    output:
-                      general-ips-list: ips-list
-                      general-ips-quantity: ips-size
-                - get-cpu-ips-to-destroy:
-                    action: .get-slave-ips-to-destroy
-                    parameters:
-                      current-ips-serialized: "{$.current-cpu-ips-serialized}"
-                      destroy-quantity: "{$.destroy-cpu-quantity}"
-                    output:
-                      cpu-ips-list: ips-list
-                      cpu-ips-quantity: ips-size
-                - get-memory-ips-to-destroy:
-                    action: .get-slave-ips-to-destroy
-                    parameters:
-                      current-ips-serialized: "{$.current-memory-ips-serialized}"
-                      destroy-quantity: "{$.destroy-memory-quantity}"
-                    output:
-                      memory-ips-list: ips-list
-                      memory-ips-quantity: ips-size
-                - get-disk-ips-to-destroy:
-                    action: .get-slave-ips-to-destroy
-                    parameters:
-                      current-ips-serialized: "{$.current-disk-ips-serialized}"
-                      destroy-quantity: "{$.destroy-disk-quantity}"
-                    output:
-                      disk-ips-list: ips-list
-                      disk-ips-quantity: ips-size
-              return:
-                - destroy-general-ips:
-                    value: "{$.general-ips-list}"
-                - destroy-general-quantity:
-                    value: "{$.general-ips-quantity}"
-                - destroy-cpu-ips:
-                    value: "{$.cpu-ips-list}"
-                - destroy-cpu-quantity:
-                    value: "{$.cpu-ips-quantity}"
-                - destroy-memory-ips:
-                    value: "{$.memory-ips-list}"
-                - destroy-memory-quantity:
-                    value: "{$.memory-ips-quantity}"
-                - destroy-disk-ips:
-                    value: "{$.disk-ips-list}"
-                - destroy-disk-quantity:
-                    value: "{$.disk-ips-quantity}"
+            parameters:
+              - current-general-ips-serialized:
+                  type: list
+              - destroy-general-quantity:
+                  type: int
+              - current-cpu-ips-serialized:
+                  type: list
+              - destroy-cpu-quantity:
+                  type: int
+              - current-memory-ips-serialized:
+                  type: list
+              - destroy-memory-quantity:
+                  type: int
+              - current-disk-ips-serialized:
+                  type: list
+              - destroy-disk-quantity:
+                  type: int
+            steps:
+              - get-general-ips-to-destroy:
+                  action: .get-slave-ips-to-destroy
+                  parameters:
+                    current-ips-serialized: "{$.current-general-ips-serialized}"
+                    destroy-quantity: "{$.destroy-general-quantity}"
+                  output:
+                    general-ips-list: ips-list
+                    general-ips-quantity: ips-size
+              - get-cpu-ips-to-destroy:
+                  action: .get-slave-ips-to-destroy
+                  parameters:
+                    current-ips-serialized: "{$.current-cpu-ips-serialized}"
+                    destroy-quantity: "{$.destroy-cpu-quantity}"
+                  output:
+                    cpu-ips-list: ips-list
+                    cpu-ips-quantity: ips-size
+              - get-memory-ips-to-destroy:
+                  action: .get-slave-ips-to-destroy
+                  parameters:
+                    current-ips-serialized: "{$.current-memory-ips-serialized}"
+                    destroy-quantity: "{$.destroy-memory-quantity}"
+                  output:
+                    memory-ips-list: ips-list
+                    memory-ips-quantity: ips-size
+              - get-disk-ips-to-destroy:
+                  action: .get-slave-ips-to-destroy
+                  parameters:
+                    current-ips-serialized: "{$.current-disk-ips-serialized}"
+                    destroy-quantity: "{$.destroy-disk-quantity}"
+                  output:
+                    disk-ips-list: ips-list
+                    disk-ips-quantity: ips-size
+            return:
+              - destroy-general-ips:
+                  value: "{$.general-ips-list}"
+              - destroy-general-quantity:
+                  value: "{$.general-ips-quantity}"
+              - destroy-cpu-ips:
+                  value: "{$.cpu-ips-list}"
+              - destroy-cpu-quantity:
+                  value: "{$.cpu-ips-quantity}"
+              - destroy-memory-ips:
+                  value: "{$.memory-ips-list}"
+              - destroy-memory-quantity:
+                  value: "{$.memory-ips-quantity}"
+              - destroy-disk-ips:
+                  value: "{$.disk-ips-list}"
+              - destroy-disk-quantity:
+                  value: "{$.disk-ips-quantity}"
 
           .add-slaves:
             parameters:
@@ -956,7 +956,7 @@ application:
               - update:
                   action: .update-ansible-playbooks
                   parameters:
-                      playbooks-url: "{$.playbooks-url}"
+                    playbooks-url: "{$.playbooks-url}"
 
           .provision-slave-nodes:
             parameters:

@@ -1,11 +1,11 @@
 application:
   interfaces:
     component:
-        "*": bind(factory#component.*)
+      "*": bind(factory#component.*)
     webui:
-        webui-by-id: bind(factory#factory.instances)
+      webui-by-id: bind(factory#factory.instances)
     configuration:
-        "*": bind(factory#configuration.*)
+      "*": bind(factory#configuration.*)
   configuration:
     component.application: "ISP web UI on marathon"
     component.discoveryScript: /webui/discover.py

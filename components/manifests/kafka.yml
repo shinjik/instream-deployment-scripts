@@ -21,8 +21,8 @@ application:
         factory.healthCheckScript:      /kafka/healthCheck.py
         factory.reconfigurationScript:  /kafka/reconfigure.py
         factory.commandScripts:
-            control.restart:            /kafka/restart.py
-            control.scale:              /kafka/scale.py
+          control.restart:              /kafka/restart.py
+          control.scale:                /kafka/scale.py
       interfaces:
         configuration:
           name:

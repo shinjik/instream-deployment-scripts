@@ -21,8 +21,8 @@ application:
         factory.healthCheckScript:      /webui/healthCheck.py
         factory.reconfigurationScript:  /webui/reconfigure.py
         factory.commandScripts:
-            control.restart:            /webui/restart.py
-            control.scale:              /webui/scale.py
+          control.restart:              /webui/restart.py
+          control.scale:                /webui/scale.py
       interfaces:
         configuration:
           name:

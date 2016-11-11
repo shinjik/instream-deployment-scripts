@@ -36,6 +36,10 @@ kit:
       manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/components/manifests/spark.yml
     - name: "Spark on marathon Factory"
       manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/components/manifests/spark-factory.yml
+    - name: "Twitter Consumer on marathon"
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/components/manifests/twitter-consumer.yml
+    - name: "Twitter Consumer on marathon Factory"
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/components/manifests/twitter-consumer-factory.yml
     - name: "Docker Service"
       manifest: https://raw.github.com/qubell-bazaar/docker/master/docker.yml
     - name: "Scripting Service on Docker"

@@ -38,7 +38,7 @@ application:
       slaves_disk_hardware_quantity: "bind(vms#input.slaves_disk_hardware_quantity)"
       disk_tag_hardware: "bind(vms#input.disk_tag_hardware)"
 
-      playbooks_url: "bind(vms#input.playbooks_url)"
+      playbooks_url: "bind(manager-node#input.playbooks_url)"
       mesos_version: "bind(vms#input.mesos_version)"
       mesos_package_version: "bind(vms#input.mesos_package_version)"
       marathon_version: "bind(vms#input.marathon_version)"
@@ -56,15 +56,14 @@ application:
       scale-up: "bind(vms#actions.scale-up)"
       scale-down: "bind(vms#actions.scale-down)"
 
-      update-playbooks: "bind(vms#actions.update-playbooks)"
-      run-ansible: "bind(vms#actions.run-ansible)"
-
     Marathon:
       application-pic: "bind(metadata#output.marathon-pic)"
       manager: "bind(vms#result.Marathon_URL)"
 
     Manager:
       manager-ip: "bind(manager-node#result.manager-ip)"
+      update-playbooks: "bind(manager-node#actions.update-playbooks)"
+      run-ansible: "bind(manager-node#actions.run-ansible)"
 
   bindings:
     - [manager-node, vms]
@@ -107,13 +106,28 @@ application:
           manager_hardware:
             type: configuration(string)
             name: EC2 hardware
+          playbooks_url:
+            type: configuration(string)
+            name: Ansible playbooks
         manager:
           manager-ip:
             type: consume-signal(string)
+            name: Manager node's IP
         result:
           manager-ip:
             type: publish-signal(string)
             name: Manager node's IP
+        actions:
+          update-playbooks:
+            type: receive-command(string playbooks-url)
+            name: Update playbooks on manager node
+            arguments:
+              playbooks-url:
+                name: Github link to zip archive
+                default: "https://github.com/shinjik/instream-deployment-scripts/archive/master.zip"
+          run-ansible:
+            type: receive-command()
+            name: Run ansible
 
       configuration:
         configuration.triggers: {}
@@ -145,10 +159,29 @@ application:
               - generate-ansible-ssh-key:
                   action: .generate-ssh-key
                   precedingPhases: [ provision-vm ]
+              - download-ansible-scripts:
+                  action: .update-ansible-playbooks
+                  precedingPhases: [ install-ansible ]
+                  parameters:
+                    playbooks-url: "{$.playbooks_url}"
             return:
               - manager-ip:
-                  description: "Node manager ip"
                   value: "{$.result-ips[0]}"
+
+          run-ansible:
+            steps:
+              - run:
+                  action: .run-ansible
+
+          update-playbooks:
+            parameters:
+              - playbooks-url:
+                  type: string
+            steps:
+              - update:
+                  action: .update-ansible-playbooks
+                  parameters:
+                    playbooks-url: "{$.playbooks-url}"
 
           .install-ansible:
             steps:
@@ -164,6 +197,17 @@ application:
                         apt-get update &&
                         apt-get install -y git ansible unzip
 
+          .run-ansible:
+            steps:
+              - run-ansible:
+                  action: execrun
+                  parameters:
+                    roles: [ "manager-node" ]
+                    command:
+                      - |
+                        cd mesos-cluster &&
+                        ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i ../inventory ./playbook.yml --extra-vars "@../params.yaml"
+
           .generate-ssh-key:
             steps:
               - generate:
@@ -174,6 +218,29 @@ application:
                       - |
                         ssh-keygen -t rsa -N "" -f ~/.ssh/aws.key &&
                         chmod 600 ~/.ssh/aws.key
+
+          .update-ansible-playbooks:
+            parameters:
+              - playbooks-url:
+                  type: string
+            steps:
+              - update-playbooks:
+                  action: execrun
+                  parameters:
+                    roles: [ "manager-node" ]
+                    command:
+                      - |
+                        rm -rf --preserve-root playbooks.zip &&
+                        wget "{$.playbooks-url}" -O playbooks.zip &&
+                        folder=`echo "{$.playbooks-url}" | cut -d/ -f 5` &&
+                        branch=`echo "{$.playbooks-url}" | sed -n 's/\(.*\)archive\/\(.*\).zip/\2/p'` &&
+                        rm -rf --preserve-root ./mesos-cluster &&
+                        rm -rf $${{folder}}-$${{branch}} &&
+                        unzip playbooks.zip &&
+                        mv $${{folder}}-$${{branch}}/mesos-cluster mesos-cluster &&
+                        rm -rf $${{folder}}-$${{branch}} &&
+                        sudo ansible-galaxy install -r mesos-cluster/install-roles.yml &&
+                        sudo chown -R ubuntu:ubuntu .ansible .ansible_galaxy
 
     vms:
       type: workflow.Instance
@@ -218,9 +285,6 @@ application:
           disk_tag_hardware:
             type: configuration(string)
             name: Disk-intensive hardware
-          playbooks_url:
-            type: configuration(string)
-            name: Ansible playbooks
           mesos_version:
             type: configuration(string)
             name: Mesos version
@@ -234,18 +298,51 @@ application:
           force-scale-cluster:
             type: receive-command(int slaves-general-hardware-quantity, int slaves-cpu-hardware-quantity, int slaves-memory-hardware-quantity, int slaves-disk-hardware-quantity)
             name: Force scale cluster (without mesos drain node)
+            arguments:
+              slaves-general-hardware-quantity:
+                name: General purpose hardware slaves
+                default: 1
+              slaves-cpu-hardware-quantity:
+                name: CPU-intensive hardware slaves
+                default: 1
+              slaves-memory-hardware-quantity:
+                name: Memory-intensive hardware slaves
+                default: 1
+              slaves-disk-hardware-quantity:
+                name: Disk-intensive hardware slaves
+                default: 1
           scale-up:
             type: receive-command(int slaves-general-hardware-quantity, int slaves-cpu-hardware-quantity, int slaves-memory-hardware-quantity, int slaves-disk-hardware-quantity)
             name: Scale up (add slaves)
+            arguments:
+              slaves-general-hardware-quantity:
+                name: General purpose hardware slaves
+                default: 0
+              slaves-cpu-hardware-quantity:
+                name: CPU-intensive hardware slaves
+                default: 0
+              slaves-memory-hardware-quantity:
+                name: Memory-intensive hardware slaves
+                default: 0
+              slaves-disk-hardware-quantity:
+                name: Disk-intensive hardware slaves
+                default: 0
           scale-down:
             type: receive-command(int slaves-general-hardware-quantity, int slaves-cpu-hardware-quantity, int slaves-memory-hardware-quantity, int slaves-disk-hardware-quantity)
             name: Scale down (destroy slaves, mesos drain node is enable)
-          update-playbooks:
-            type: receive-command(string playbooks-url)
-            name: Update playbooks on manager node
-          run-ansible:
-            type: receive-command()
-            name: Run ansible
+            arguments:
+              slaves-general-hardware-quantity:
+                name: General purpose hardware slaves
+                default: 0
+              slaves-cpu-hardware-quantity:
+                name: CPU-intensive hardware slaves
+                default: 0
+              slaves-memory-hardware-quantity:
+                name: Memory-intensive hardware slaves
+                default: 0
+              slaves-disk-hardware-quantity:
+                name: Disk-intensive hardware slaves
+                default: 0
         manager:
           manager-ip:
             type: consume-signal(string)
@@ -271,9 +368,6 @@ application:
           mesos_slaves_with_disk_tag:
             type: publish-signal(list<string>)
             name: Disk-intensive slaves
-          scripts_url:
-            type: publish-signal(string)
-            name: Marathon management scripts URL
 
       required: [manager]
 
@@ -359,12 +453,14 @@ application:
 
               - prepare-masters-inventory-file:
                   action: .prepare-masters-inventory-file
+                  phase: create-inventory-files
                   precedingPhases: [ serialize-masters-list ]
                   parameters:
                     serialized-masters-list: "{$.serialized-masters-list}"
 
               - prepare-slaves-inventory-file:
                   action: .prepare-slaves-inventory-file
+                  phase: create-inventory-files
                   precedingPhases: [ serialize-slaves-list ]
                   parameters:
                     serialized-slaves-with-general-list: "{$.serialized-slaves-with-general-list}"
@@ -381,15 +477,9 @@ application:
                     marathon-version: "{$.marathon_version}"
                     yaml-serialized-masters-list: "{$.yaml-serialized-masters-list}"
 
-              - download-ansible-scripts:
-                  action: .update-ansible-playbooks
-                  precedingPhases: [ get-manager-node ]
-                  parameters:
-                    playbooks-url: "{$.playbooks_url}"
-
               - run-ansible:
                   action: .run-ansible
-                  precedingPhases: [ download-ansible-scripts, create-vars-file ]
+                  precedingPhases: [ create-inventory-files, create-vars-file ]
 
             return:
               - Mesos_Masters:
@@ -406,27 +496,17 @@ application:
                   value: "{$.slaveMemoryIps}"
               - mesos_slaves_with_disk_tag:
                   value: "{$.slaveDiskIps}"
-              - scripts_url:
-                  value: "{$.playbooks_url}"
 
           scale-up:
             parameters:
               - slaves-general-hardware-quantity:
-                  description: Quantity of general-purpose slaves to add
                   type: int
-                  default: 0
               - slaves-cpu-hardware-quantity:
-                  description: Quantity of cpu-intensive slaves to add
                   type: int
-                  default: 0
               - slaves-memory-hardware-quantity:
-                  description: Quantity of memory-intensive slaves to add
                   type: int
-                  default: 0
               - slaves-disk-hardware-quantity:
-                  description: Quantity of disk-intensive slaves to add
                   type: int
-                  default: 0
             steps:
               - add-slaves:
                   action: .add-slaves-batch
@@ -485,16 +565,12 @@ application:
           scale-down:
             parameters:
               - slaves-general-hardware-quantity:
-                  description: Quantity of general-purpose slaves to remove
                   type: int
               - slaves-cpu-hardware-quantity:
-                  description: Quantity of cpu-intensive slaves to remove
                   type: int
               - slaves-memory-hardware-quantity:
-                  description: Quantity of memory-intensive slaves to remove
                   type: int
               - slaves-disk-hardware-quantity:
-                  description: Quantity of disk-intensive slaves to remove
                   type: int
             steps:
               - serialize-slaves-list:
@@ -796,13 +872,10 @@ application:
           .add-slaves:
             parameters:
               - add-slaves-quantity:
-                  description: Slaves quantity to add
                   type: int
               - add-slaves-rolename:
-                  description: Slaves type
                   type: string
               - add-slaves-hardwareid:
-                  description: Slaves EC2 hardwareId
                   type: string
             steps:
               - create:
@@ -876,16 +949,12 @@ application:
           force-scale-cluster:
             parameters:
               - slaves-general-hardware-quantity:
-                  description: Quantity of general-purpose slaves
                   type: int
               - slaves-cpu-hardware-quantity:
-                  description: Quantity of slaves with cpu tag
                   type: int
               - slaves-memory-hardware-quantity:
-                  description: Quantity of slaves with memory tag
                   type: int
               - slaves-disk-hardware-quantity:
-                  description: Quantity of slaves with disk tag
                   type: int
             steps:
               - provision-nodes:
@@ -942,35 +1011,15 @@ application:
               - mesos_slaves_with_disk_tag:
                   value: "{$.slaveDiskIps}"
 
-          run-ansible:
-            steps:
-              - run:
-                  action: .run-ansible
-
-          update-playbooks:
-            parameters:
-              - playbooks-url:
-                  description: Playbooks url
-                  type: string
-            steps:
-              - update:
-                  action: .update-ansible-playbooks
-                  parameters:
-                    playbooks-url: "{$.playbooks-url}"
-
           .provision-slave-nodes:
             parameters:
               - slaves-general-hardware-quantity:
-                  description: Quantity of general-purpose slaves
                   type: int
               - slaves-cpu-hardware-quantity:
-                  description: Quantity of slaves with cpu tag
                   type: int
               - slaves-memory-hardware-quantity:
-                  description: Quantity of slaves with memory tag
                   type: int
               - slaves-disk-hardware-quantity:
-                  description: Quantity of slaves with disk tag
                   type: int
             steps:
               - provision-slaves-with-general-tag:
@@ -1022,7 +1071,7 @@ application:
           .prepare-masters-inventory-file:
             parameters:
               - serialized-masters-list:
-                  description: List with master ips
+                  type: list
             steps:
               - prepare:
                   action: execrun
@@ -1042,13 +1091,13 @@ application:
           .prepare-slaves-inventory-file:
             parameters:
               - serialized-slaves-with-general-list:
-                  description: List with general slave ips
+                  type: list
               - serialized-slaves-with-cpu-list:
-                  description: List with cpu slave ips
+                  type: list
               - serialized-slaves-with-memory-list:
-                  description: List with memory slave ips
+                  type: list
               - serialized-slaves-with-disk-list:
-                  description: List with disk slave ips
+                  type: list
             steps:
               - prepare:
                   action: execrun
@@ -1088,13 +1137,13 @@ application:
           .update-vars-file:
             parameters:
               - mesos-version:
-                  description: Mesos version
+                  type: string
               - mesos-package-version:
-                  description: Mesos package version
+                  type: string
               - marathon-version:
-                  description: Marathon version
+                  type: string
               - yaml-serialized-masters-list:
-                  description: Yaml formated master ips
+                  type: list
             steps:
               - create-vars-file:
                   action: execrun
@@ -1129,29 +1178,6 @@ application:
                         if [[ -z "`cat ~/.ssh/authorized_keys | grep "{$.ansible-pub-key[*][0]}"`" ]]; then
                           echo "{$.ansible-pub-key[*][0]}" >> ~/.ssh/authorized_keys
                         fi
-
-          .update-ansible-playbooks:
-            parameters:
-              - playbooks-url:
-                  description: URL to new zip file with playbooks
-            steps:
-              - update-playbooks:
-                  action: execrun
-                  parameters:
-                    roles: [ "manager-node" ]
-                    command:
-                      - |
-                        rm -rf --preserve-root playbooks.zip &&
-                        wget "{$.playbooks-url}" -O playbooks.zip &&
-                        folder=`echo "{$.playbooks-url}" | cut -d/ -f 5` &&
-                        branch=`echo "{$.playbooks-url}" | sed -n 's/\(.*\)archive\/\(.*\).zip/\2/p'` &&
-                        rm -rf --preserve-root ./mesos-cluster &&
-                        rm -rf $${{folder}}-$${{branch}} &&
-                        unzip playbooks.zip &&
-                        mv $${{folder}}-$${{branch}}/mesos-cluster mesos-cluster &&
-                        rm -rf $${{folder}}-$${{branch}} &&
-                        sudo ansible-galaxy install -r mesos-cluster/install-roles.yml &&
-                        sudo chown -R ubuntu:ubuntu .ansible .ansible_galaxy
 
           .run-ansible:
             steps:
@@ -1214,8 +1240,7 @@ application:
 
           .serialize-list:
             parameters:
-              - arg:
-                  description: Argument to serialize
+              - arg: {}
             steps:
               - serialize-as-csv:
                   action: serialize
@@ -1240,11 +1265,11 @@ application:
           .provision-nodes:
             parameters:
               - roleName:
-                  description: Role for the provisioned node
+                  type: string
               - hardwareId:
-                  description: HardwareId
+                  type: string
               - quantity:
-                  description: Number of nodes to start
+                  type: int
             steps:
               - provision-node:
                   action: provisionAmazonVm

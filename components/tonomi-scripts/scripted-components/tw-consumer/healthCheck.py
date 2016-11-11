@@ -12,7 +12,8 @@ instances = {}
 for instance_name in args['instances'].keys():
 
   try:
-    app = marathon_client.get_app('{}/webui-app'.format(instance_name))
+    group = marathon_client.get_group(instance_name)
+    app = marathon_client.get_app(group.apps[0])
 
     status = {
       'flags': {
@@ -22,32 +23,11 @@ for instance_name in args['instances'].keys():
       }
     }
 
-    service_port = app.container.docker.port_mappings[0].service_port
-    hosts = [task.host for task in app.tasks]
-
     interfaces = {
       'compute': {
         'signals': {
           'ram': app.mem * app.tasks_running,
           'cpu': app.cpus * app.tasks_running,
-          'disk': app.disk * app.tasks_running,
-          'instances': app.tasks_running
-        }
-      },
-      'ui': {
-        'signals': {
-          'link': 'http://{}:{}'.format(marathon_client.servers[0].split(':')[1][2:], service_port),
-          'load-balancer-port': str(service_port),
-          'hosts': hosts
-        }
-      }
-    }
-
-    components = {
-      'ui': {
-        'reference': {
-          'mapping': 'apps.app-by-id',
-          'key': '{}'.format(app.id)
         }
       }
     }
@@ -57,7 +37,7 @@ for instance_name in args['instances'].keys():
       'name': instance_name,
       'status': status,
       'interfaces': interfaces,
-      'components': components,
+      'components': {},
     }
   except:
     app_statuses[instance_name] = {

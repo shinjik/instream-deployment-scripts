@@ -21,7 +21,10 @@ class MarathonManager(object):
     for app in self._client.list_apps():
       if not app_filter or ('_tonomi_application', app_filter) in app.labels.items():
         if not env_filter:
-          apps.add(reduce_app_name(app.id))
+          if app_filter == 'tw-consumer':
+            apps.add(''.join('/{}'.format(i) for i in app.id.split('/')[1:-1]))
+          else:
+            apps.add(reduce_app_name(app.id))
         else:
           if '_tonomi_environment' in app.labels.keys():
             env_name = app.labels['_tonomi_environment']

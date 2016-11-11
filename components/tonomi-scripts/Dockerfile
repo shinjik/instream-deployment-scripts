@@ -10,6 +10,7 @@ ADD scripted-components/kafka             /kafka
 ADD scripted-components/webui             /webui
 ADD scripted-components/spark             /spark
 ADD scripted-components/isp-environment   /isp-environment
+ADD scripted-components/tw-consumer       /tw-consumer
 
 RUN pip3 install --upgrade pip
 RUN pip3 install -r /requirements.txt

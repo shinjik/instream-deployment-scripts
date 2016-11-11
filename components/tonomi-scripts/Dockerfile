@@ -1,6 +1,6 @@
 FROM qubell/python-scripting:latest
 
-ADD scripted-components/update-scripts.sh /update-scripts.sh
+ADD update-scripts.sh /update-scripts.sh
 ADD scripted-components/requirements.txt  /requirements.txt
 ADD scripted-components/common            /common
 ADD scripted-components/marathon          /marathon

@@ -1,0 +1,60 @@
+application:
+  configuration:
+    configuration.name: '/new-consumer'
+    configuration.movie: 'Docker Strange'
+    configuration.search-since: '2016-11-06'
+  interfaces:
+    configuration:
+      "*": bind(application#configuration.*)
+    compute:
+      "*": bind(application#compute.*)
+    control:
+      "*": bind(application#control.*)
+  components:
+    application:
+      type: scripted.Component
+      configuration:
+        factory.name: Twitter Consumer on marathon Factory
+        factory.launchScript:           /tw-consumer/create.py
+        factory.destroyScript:          /tw-consumer/destroy.py
+        factory.healthCheckScript:      /tw-consumer/healthCheck.py
+        factory.reconfigurationScript:  /tw-consumer/reconfigure.py
+        factory.commandScripts:
+          control.restart:              /tw-consumer/restart.py
+      interfaces:
+        configuration:
+          name:
+            type: configuration(string)
+            name: Consumer name
+          movie:
+            type: configuration(string)
+            name: Movie
+          search-since:
+            type: configuration(string)
+            name: Search since
+          kafka-broker:
+            type: configuration(string)
+            name: Kafka broker
+          twitter-access-token:
+            type: configuration(string)
+            name: TWITTER_ACCESS_TOKEN
+          twitter-access-token-secret:
+            type: configuration(string)
+            name: TWITTER_ACCESS_TOKEN_SECRET
+          twitter-consumer-key:
+            type: configuration(string)
+            name: TWITTER_CONSUMER_KEY
+          twitter-consumer-secret:
+            type: configuration(string)
+            name: TWITTER_CONSUMER_SECRET
+        compute:
+          ram:
+            type: publish-signal(string)
+            name: RAM
+          cpu:
+            type: publish-signal(string)
+            name: CPU
+        control:
+          restart:
+            type: receive-command()
+            name: Restart

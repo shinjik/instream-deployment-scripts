@@ -60,7 +60,7 @@ for instance_name in args['instances'].keys():
       'components': components,
     }
   except:
-    app_statuses[instance_name] = {
+    instances[instance_name] = {
       'status': {
         'flags': {
           'active': False,

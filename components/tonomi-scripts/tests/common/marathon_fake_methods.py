@@ -1,4 +1,4 @@
-from marathon.models import MarathonApp, MarathonTask
+from marathon.models import MarathonGroup, MarathonApp, MarathonTask
 from marathon.models.container import *
 from collections import namedtuple
 
@@ -195,6 +195,12 @@ def webui_discover_list_apps():
     MarathonApp(id='/new-webui', labels={'_tonomi_application': 'webui'})
   ]
 
+def tw_consumer_discover_list_apps():
+  return [
+    MarathonApp(id='/new-consumer/doctor-strange', labels={'_tonomi_application': 'tw-consumer'}),
+    MarathonApp(id='/new-consumer2/trolls', labels={'_tonomi_application': 'tw-consumer'})
+  ]
+
 def spark_discover_list_apps():
   return [
     MarathonApp(id='/sandbox/spark', labels={'_tonomi_environment': 'sandbox',
@@ -208,6 +214,17 @@ def webui_health_check_get_app():
   container = MarathonContainer(docker=docker)
   labels = {'_tonomi_environment': 'sandbox', '_tonomi_application': 'webui'}
   app1 = MarathonApp(id='/sandbox/webui/webui-app', labels=labels, cpus=0.5, mem=256, disk=256, instances=1, container=container)
+  app1.tasks_unhealthy = 0
+  app1.tasks_running = 1
+  return [app1]
+
+def tw_consumer_health_check_get_group():
+  group1 = MarathonGroup(id='/new-consumer', apps=[MarathonApp(id='/new-consumer/doctor-strange')])
+  return group1
+
+def tw_consumer_health_check_get_app():
+  labels = {'_tonomi_application': 'tw-consumer'}
+  app1 = MarathonApp(id='/new-consumer/doctor-strange', labels=labels, cpus=0.1, mem=256, disk=0)
   app1.tasks_unhealthy = 0
   app1.tasks_running = 1
   return [app1]

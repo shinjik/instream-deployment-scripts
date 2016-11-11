@@ -15,6 +15,7 @@ KAFKA_APP = 'kafka'
 WEBUI_APP = 'webui'
 SPARK_APP = 'spark'
 ENVIRONMENT_APP = 'isp-environment'
+TW_CONSUMER_APP = 'tw-consumer'
 
 CREATE_SCRIPT = 'create.py'
 DISCOVER_SCRIPT = 'discover.py'

@@ -1,0 +1,13 @@
+instances:
+  '/new-consumer':
+    name: '/new-consumer'
+    interfaces:
+      info:
+        signals:
+          app-id: '/new-consumer'
+  '/new-consumer2':
+    name: '/new-consumer2'
+    interfaces:
+      info:
+        signals:
+          app-id: '/new-consumer2'

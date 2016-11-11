@@ -9,6 +9,7 @@ from kafka_test import TestKafkaScripts
 from webui_test import TestWebUIScripts
 from spark_test import TestSparkScripts
 from environment_test import TestEnvironmentScripts
+from tw_consumer_test import TestTwitterConsumerScripts
 
 
 if __name__ == "__main__":
@@ -21,7 +22,8 @@ if __name__ == "__main__":
     loader.loadTestsFromTestCase(TestKafkaScripts),
     loader.loadTestsFromTestCase(TestWebUIScripts),
     loader.loadTestsFromTestCase(TestSparkScripts),
-    loader.loadTestsFromTestCase(TestEnvironmentScripts)
+    loader.loadTestsFromTestCase(TestEnvironmentScripts),
+    loader.loadTestsFromTestCase(TestTwitterConsumerScripts)
   ))
 
   runner = TextTestRunner(verbosity=2)

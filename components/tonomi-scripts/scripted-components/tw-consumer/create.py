@@ -4,9 +4,10 @@ import sys
 import yaml
 from utils import *
 from models import *
+from marathon import MarathonClient
 
 args = parse_args()
-manager = MarathonManager(get_marathon_url(args))
+marathon_client = MarathonClient(get_marathon_url(args))
 instances = {}
 
 for instance_id, app in args['launch-instances'].items():
@@ -34,7 +35,7 @@ for instance_id, app in args['launch-instances'].items():
   name = '{}/{}'.format(instance_name, ''.join([i for i in movie if i.isalpha() or i == ' ']).lower().replace(' ', '-'))
 
   consumer_app = Node(name=name, image='java:8', labels=labels, cmd=cmd, env=env, uris=uris, cpus=0.1, mem=256, disk=0)
-  manager.create(consumer_app)
+  marathon_client.create_app(name, consumer_app.app)
 
   instances[instance_name] = {
     'instanceId': instance_id,

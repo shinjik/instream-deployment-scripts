@@ -1,0 +1,13 @@
+configuration:
+  configuration.marathonURL: 'http://localhost'
+launch-instances:
+  1234567:
+    configuration:
+      configuration.name: '/new-consumer'
+      configuration.movie: 'Some movie'
+      configuration.search-since: '2016-11-06'
+      configuration.kafka-broker: '127.0.0.1:31001'
+      configuration.twitter-access-token: 'qwerty1'
+      configuration.twitter-access-token-secret: 'qwerty2'
+      configuration.twitter-consumer-key: 'qwerty3'
+      configuration.twitter-consumer-secret: 'qwerty3'

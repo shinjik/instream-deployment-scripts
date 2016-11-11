@@ -39,7 +39,7 @@ kit:
     - name: "Docker Service"
       manifest: https://raw.github.com/qubell-bazaar/docker/master/docker.yml
     - name: "Scripting Service on Docker"
-      manifest: https://raw.github.com/qubell-bazaar/component-docker-scripting/master/scripting.yml
+      manifest: https://raw.github.com/shinjik/instream-deployment-scripts/master/components/manifests/scripting-service-on-docker.yml
 
   provider:
     name: Grid Dynamics

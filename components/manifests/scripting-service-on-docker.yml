@@ -1,0 +1,40 @@
+application:
+  configuration:
+    configuration.image:   "maxbr/isp-tonomi"
+    configuration.version: "0.1"
+  interfaces:
+    configuration:
+      "*": "bind(scripting#configuration.*)"
+    scripting:
+      "*": "bind(scripting#scripting.*)"
+    scripts:
+      "*": "bind(scripting#scripts.*)"
+  components:
+    scripting:
+      type: docker.Container
+      interfaces:
+        configuration:
+          image:
+            type: configuration(string)
+            name: Image
+          version:
+            type: configuration(string)
+            name: Version
+        scripting:
+          execute:
+            type: receive-command(string script, object arguments => object results)
+            name: Execute
+        scripts:
+          update-scripts:
+            type: receive-command(string url => string result)
+            name: Update scripts from github repo
+            arguments:
+              url:
+                name: "Link to zip archive of repo at github"
+                default: "https://github.com/shinjik/instream-deployment-scripts/archive/master.zip"
+      configuration:
+        docker.image: "{$.configuration.image}:{$.configuration.version}"
+        docker.command: [ "sh", "-c", "while true; do sleep 1024d; done" ]
+        docker.commands:
+          scripting.execute: [ "/invoke.py" ]
+          scripts.update-scripts: [ "/update-scripts.sh" ]

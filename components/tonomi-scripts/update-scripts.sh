@@ -1,7 +1,7 @@
 #!/bin/sh
 
 read input
-url=`echo "$input" | sed -n "s|{url: \'\(.*\)\'}|\1|p"`
+url=`echo "$input" | sed -n "s|{url: [\'\"]\(.*\)[\'\"]}|\1|p"`
 rm -rf repo.zip
 wget -q -O repo.zip "$url" || apk add --update openssl && wget -q -O repo.zip "$url"
 folder=`echo "$url" | cut -d/ -f 5`

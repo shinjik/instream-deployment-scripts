@@ -1,4 +1,5 @@
 from marathon import MarathonClient
+from marathon.models import MarathonHealthCheck
 from functools import reduce
 import yaml
 import json
@@ -99,3 +100,12 @@ def get_free_ports(client, num=1):
       ports.append(x)
       num -= 1
   return ports
+
+
+def get_health_check(grace_period_seconds=300, interval_seconds=20, max_consecutive_failures=3, timeout_seconds=20,
+                     protocol='TCP', ignore_http1xx=False, port=None, path=None, port_index=None):
+
+  return MarathonHealthCheck(grace_period_seconds=grace_period_seconds, interval_seconds=interval_seconds,
+                             max_consecutive_failures=max_consecutive_failures, protocol=protocol,
+                             timeout_seconds=timeout_seconds, ignore_http1xx=ignore_http1xx, port=port,
+                             path=path, port_index=port_index)

@@ -74,12 +74,12 @@ class MarathonManager(object):
 class Node(object):
   def __init__(self, name, image, volumes=[], network='BRIDGE', privileged=False, labels={}, cmd=None, constraints=[],
                residency=None, env={}, health_checks=[], uris=[], cpus=0.5, mem=256, instances=1, disk=512,
-               port_mappings=[]):
+               port_mappings=[], dependencies=None):
     self.name = name
     docker = MarathonDockerContainer(image=image, network=network, privileged=privileged,
                                      port_mappings=port_mappings)
     container = MarathonContainer(docker=docker, volumes=volumes)
-    self.app = MarathonApp(id=name, cmd=cmd, cpus=cpus, mem=mem, instances=instances,
+    self.app = MarathonApp(id=name, cmd=cmd, cpus=cpus, mem=mem, instances=instances, dependencies=dependencies,
                            disk=disk, labels=labels, container=container, constraints=constraints,
                            residency=residency, env=env, health_checks=health_checks, uris=uris)
 
@@ -107,10 +107,7 @@ class ZookeeperNode(Node):
     constraints = [MarathonConstraint(field='hostname', operator='LIKE', value='')]
     residency = Residency(task_lost_behavior='WAIT_FOREVER')
 
-    health_checks = [
-      MarathonHealthCheck(grace_period_seconds=300, interval_seconds=20, max_consecutive_failures=3,
-                          protocol='TCP', timeout_seconds=20, ignore_http1xx=False, port=ports[0])
-    ]
+    health_checks = [get_health_check(port=ports[0])]
 
     cmd = 'export ZOO_SERVERS="{}" && /docker-entrypoint.sh zkServer.sh start-foreground'
 
@@ -185,10 +182,7 @@ class RedisNode(Node):
     constraints = [MarathonConstraint(field='hostname', operator='UNIQUE')]
     residency = Residency(task_lost_behavior='WAIT_FOREVER')
 
-    health_checks = [
-      MarathonHealthCheck(grace_period_seconds=300, interval_seconds=20, max_consecutive_failures=3,
-                          protocol='TCP', timeout_seconds=20, ignore_http1xx=False, port=port)
-    ]
+    health_checks = [get_health_check(port=port)]
 
     service_port = 0 if not is_master else port
     port_mappings = [
@@ -250,10 +244,7 @@ class CassandraNode(Node):
 
     constraints = [MarathonConstraint(field='hostname', operator='UNIQUE')]
     residency = Residency(task_lost_behavior='WAIT_FOREVER')
-    health_checks = [
-      MarathonHealthCheck(grace_period_seconds=300, interval_seconds=20, max_consecutive_failures=3,
-                          protocol='TCP', timeout_seconds=20, ignore_http1xx=False, port=ports[9042])
-    ]
+    health_checks = [get_health_check(port=ports[9042])]
 
     ports_map = {
       'p11': 9042,
@@ -350,8 +341,7 @@ class KafkaBroker(Node):
     ]
 
     port_mappings = [
-      MarathonContainerPortMapping(container_port=port, host_port=port,
-                                   service_port=port, protocol='tcp')
+      MarathonContainerPortMapping(container_port=port, host_port=port, service_port=port, protocol='tcp')
     ]
 
     constraints = [MarathonConstraint(field='hostname', operator='UNIQUE')]
@@ -373,10 +363,7 @@ class KafkaBroker(Node):
       'KAFKA_PORT': str(port)
     }
 
-    health_checks = [
-      MarathonHealthCheck(grace_period_seconds=300, interval_seconds=20, max_consecutive_failures=3,
-                          protocol='TCP', timeout_seconds=20, ignore_http1xx=False, port=port)
-    ]
+    health_checks = [get_health_check(port=port)]
 
     super().__init__(name, image='wurstmeister/kafka', network='BRIDGE', labels=labels, cmd=cmd,
                      env=env, health_checks=health_checks, cpus=0.4, mem=300, instances=3,
@@ -426,10 +413,7 @@ class UINode(Node):
 
     uris = ['https://s3-us-west-1.amazonaws.com/streaming-artifacts/ui.tar.gz']
 
-    health_checks = [
-      MarathonHealthCheck(path='/', protocol='HTTP', port_index=0, grace_period_seconds=300, interval_seconds=60,
-                          timeout_seconds=30, max_consecutive_failures=3, ignore_http1xx=True)
-    ]
+    health_checks = [get_health_check(path='/', protocol='HTTP', port_index=0)]
 
     super().__init__(name, image='node', network='BRIDGE', labels=labels, cmd=cmd, env=env,
                      health_checks=health_checks, uris=uris, cpus=0.5, mem=300, instances=2,
@@ -496,10 +480,7 @@ class SparkNode(Node):
       'https://s3-us-west-1.amazonaws.com/streaming-artifacts/dictionary-populator.tar.gz'
     ]
 
-    health_checks = [
-      MarathonHealthCheck(grace_period_seconds=300, interval_seconds=20, max_consecutive_failures=3,
-                          protocol='HTTP', timeout_seconds=20, ignore_http1xx=True, port_index=2)
-    ]
+    health_checks = [get_health_check(protocol='HTTP', port_index=2)]
 
     super().__init__(name, image='sequenceiq/spark:1.6.0', network='BRIDGE', labels=labels, cmd=cmd,
                      env=env, health_checks=health_checks, cpus=0.5, mem=500, instances=1,

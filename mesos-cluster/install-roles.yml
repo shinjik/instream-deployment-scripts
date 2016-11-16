@@ -25,3 +25,7 @@
 - src: https://github.com/AnsibleShipyard/ansible-mesos.git
   version: v0.5.0
   name: ansible-mesos
+
+- src: https://github.com/maxbr/ansible-mesos-dns.git
+  version: master
+  name: ansible-mesos-dns

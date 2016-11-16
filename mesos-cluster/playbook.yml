@@ -12,10 +12,15 @@
     - role: ansible-mesos
       mesos_install_mode: master
       mesos_quorum: 1
-      zookeeper_hostnames: "{{ groups.mesos_masters | join(':' + zookeeper_client_port + ',')  }}:{{ zookeeper_client_port  }}"
+      zookeeper_hostnames: "{{ groups.mesos_masters | join(':' + zookeeper_client_port + ',') }}:{{ zookeeper_client_port }}"
       mesos_hostname: "{{ ansible_default_ipv4.address }}"
       mesos_version: "{{ mesos_version }}"
       mesos_package_version: "{{ mesos_package_version }}"
+
+    - role: ansible-mesos-dns
+      mesos_dns_install_mode: server
+      mesos_master_hosts: "{{ mesos_master_hosts }}"
+      zookeeper_hosts: "{{ groups.mesos_masters | join(':' + zookeeper_client_port + ',') }}:{{ zookeeper_client_port }}"
 
     - role: ansible-java
       use_openjdk_ppa: true
@@ -56,3 +61,7 @@
       mesos_slave_additional_configs:
         - name: ATTRIBUTES
           value: '"node_type:{{ mesos_node_type }}"'
+
+    - role: ansible-mesos-dns
+      mesos_dns_install_mode: client
+      mesos_dns_hosts: "{{ mesos_master_hosts }}"

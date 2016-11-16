@@ -510,4 +510,3 @@ class Spark(Application):
 
   def _create(self, client):
     client.create_app(self.spark_app.name, self.spark_app._get_entity())
-

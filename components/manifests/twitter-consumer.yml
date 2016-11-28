@@ -1,7 +1,6 @@
 application:
   configuration:
     configuration.name: '/new-consumer'
-    configuration.movie: 'Docker Strange'
     configuration.search-since: '2016-11-06'
   interfaces:
     configuration:
@@ -35,6 +34,12 @@ application:
           kafka-broker:
             type: configuration(string)
             name: Kafka broker
+          cassandra-host:
+            type: configuration(string)
+            name: Cassandra host
+          cassandra-port:
+            type: configuration(int)
+            name: Cassandra port
           twitter-access-token:
             type: configuration(string)
             name: TWITTER_ACCESS_TOKEN

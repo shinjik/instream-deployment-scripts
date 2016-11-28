@@ -3,9 +3,11 @@
 import sys
 import yaml
 from utils import *
+from ephemeral import CassandraAddMovie
 from models import *
 from marathon import MarathonClient
 from marathon.models import MarathonHealthCheck
+import time
 
 args = parse_args()
 marathon_client = MarathonClient(get_marathon_url(args))
@@ -16,6 +18,8 @@ for instance_id, app in args['launch-instances'].items():
   movie = get_conf_prop(app, 'movie')
   search_since = get_conf_prop(app, 'search-since')
   kafka_broker = get_conf_prop(app, 'kafka-broker')
+  cassandra_host = get_conf_prop(app, 'cassandra-host')
+  cassandra_port = get_conf_prop(app, 'cassandra-port')
   access_token = get_conf_prop(app, 'twitter-access-token')
   access_token_secret = get_conf_prop(app, 'twitter-access-token-secret')
   consumer_key = get_conf_prop(app, 'twitter-consumer-key')
@@ -37,10 +41,16 @@ for instance_id, app in args['launch-instances'].items():
 
   health_checks = [MarathonHealthCheck(grace_period_seconds=300, interval_seconds=60, max_consecutive_failures=3,
                                        protocol='COMMAND', timeout_seconds=20, ignore_http1xx=False,
-                                       command='test ! -z "$(ps ax|egrep "(twitter-consumer)*.(jar)"|grep -v grep)"')]
+                                       command={"value": 'test ! -z \"$(ps ax|egrep \"(twitter-consumer)*.(jar)\"|grep -v grep)\"'})]
 
   consumer_app = Node(name=name, image='java:8', labels=labels, cmd=cmd, env=env, uris=uris, cpus=0.1, mem=256, disk=0,
                       health_checks=health_checks)
+
+  add_movie = CassandraAddMovie(marathon_client, cassandra_host, cassandra_port, movie)
+  add_movie.commit()
+
+  time.sleep(15)
+
   marathon_client.create_app(name, consumer_app.app)
 
   instances[instance_name] = {

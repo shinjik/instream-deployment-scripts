@@ -16,7 +16,7 @@ class TestEphemeralApplications(unittest.TestCase):
   def test_cassandra_command(self, create_app):
     marathon_client = MarathonClient(self.marathon_url)
 
-    cass_cql = 'insert into movies (movie, release, rating) values (\'my movie\', \'2016-01-01\', 5.5);'
+    cass_cql = 'insert into movies (title, release, rating) values (\'my movie\', \'2016-01-01\', 5.5);'
     cass_host = '127.0.0.2'
     cass_port = '9042'
 

@@ -50,14 +50,14 @@ def get_cassandra_conf(app):
 
 
 def get_volume_name(name):
-  return 'vol{}-data'.format(name.replace('/', '-'))
+  return 'vol{}'.format(name.replace('/', '-'))
 
 
 def reduce_app_name(x):
   return reduce(lambda a, kv: a.replace(kv, ''), ['/zookeeper-1', '/zookeeper-2', '/zookeeper-3',
                                                   '/redis-master', '/redis-slave',
                                                   '/cassandra-seed', '/cassandra-node',
-                                                  '/kafka-broker', '/webui-app', 'spark-app'], x)
+                                                  '/kafka-broker', '/webui-app', '/spark-app'], x)
 
 
 def get_hostname_from_client(client):

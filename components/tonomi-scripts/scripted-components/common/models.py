@@ -99,9 +99,10 @@ class ZookeeperNode(Node):
 
     volume_name = get_volume_name(name)
     volumes = [
-      MarathonContainerVolume(container_path=volume_name, host_path=None, mode='RW', persistent={'size': 512}),
-      MarathonContainerVolume(container_path='/var/lib/zookeeper', host_path=volume_name, mode='RW',
-                              persistent=None)
+      MarathonContainerVolume(container_path='{}-data'.format(volume_name), mode='RW', persistent={'size': 512}),
+      MarathonContainerVolume(container_path='/data', host_path='{}-data'.format(volume_name), mode='RW'),
+      MarathonContainerVolume(container_path='{}-datalog'.format(volume_name), mode='RW', persistent={'size': 512}),
+      MarathonContainerVolume(container_path='/datalog', host_path='{}-datalog'.format(volume_name), mode='RW')
     ]
 
     constraints = [MarathonConstraint(field='hostname', operator='LIKE', value='')]
@@ -126,7 +127,7 @@ class ZookeeperNode(Node):
       'ZOO_PORT': str(ports[0])
     }
 
-    super().__init__(name, image='zookeeper', volumes=volumes, network='HOST', labels=labels,
+    super().__init__(name, image='zookeeper:3.4.9', volumes=volumes, network='HOST', labels=labels,
                      cmd=cmd, constraints=constraints, residency=residency, env=env,
                      health_checks=health_checks, cpus=0.5, mem=400, instances=1, disk=400)
 
@@ -175,8 +176,8 @@ class RedisNode(Node):
 
     volume_name = get_volume_name(name)
     volumes = [
-      MarathonContainerVolume(container_path=volume_name, host_path=None, mode='RW', persistent={'size': 512}),
-      MarathonContainerVolume(container_path='/var/lib/redis', host_path=volume_name, mode='RW', persistent=None)
+      MarathonContainerVolume(container_path=volume_name, mode='RW', persistent={'size': 512}),
+      MarathonContainerVolume(container_path='/var/lib/redis', host_path=volume_name, mode='RW')
     ]
 
     constraints = [MarathonConstraint(field='hostname', operator='UNIQUE')]
@@ -206,7 +207,7 @@ class RedisNode(Node):
       'REDIS_PORT': str(port)
     }
 
-    super().__init__(name, image='redis', volumes=volumes, network='BRIDGE', labels=labels, cmd=cmd,
+    super().__init__(name, image='redis:3.2', volumes=volumes, network='BRIDGE', labels=labels, cmd=cmd,
                      constraints=constraints, residency=residency, env=env, health_checks=health_checks,
                      cpus=0.5, mem=300, instances=1, disk=512, port_mappings=port_mappings)
 
@@ -237,13 +238,21 @@ class CassandraNode(Node):
     self.env_name = env_name
 
     volume_name = get_volume_name(name)
-    volumes = [
-      MarathonContainerVolume(container_path=volume_name, host_path=None, mode='RW', persistent={'size': 512}),
-      MarathonContainerVolume(container_path='/var/lib/cassandra', host_path=volume_name, mode='RW', persistent=None)
-    ]
+
+    volumes = []
+
+    if is_seed:
+      volumes = [
+        MarathonContainerVolume(container_path=volume_name, mode='RW', persistent={'size': 512}),
+        MarathonContainerVolume(container_path='/var/lib/cassandra', host_path=volume_name, mode='RW')
+      ]
 
     constraints = [MarathonConstraint(field='hostname', operator='UNIQUE')]
-    residency = Residency(task_lost_behavior='WAIT_FOREVER')
+
+    residency = None
+    if is_seed:
+      residency = Residency(task_lost_behavior='WAIT_FOREVER')
+
     health_checks = [get_health_check(port=ports[9042])]
 
     ports_map = {
@@ -259,11 +268,11 @@ class CassandraNode(Node):
       'p52': ports[7001]
     }
 
-    cmd = "chown -R cassandra /var/lib/cassandra && sed -i 's/{p11}/{p12}/' /etc/cassandra/default.conf/cqlshrc.sample && sed -i 's/{p31}/{p32}/' /etc/cassandra/default.conf/cassandra-env.sh && sed -i 's/{p41}/{p42}/;s/{p51}/{p52}/;s/{p11}/{p12}/;s/{p21}/{p22}/;s/{p31}/{p32}/' /etc/cassandra/default.conf/cassandra.yaml".format(**ports_map)
+    cmd = "export CASSANDRA_BROADCAST_ADDRESS=$HOST && sed -i 's/{p41}/{p42}/;s/{p51}/{p52}/;s/{p11}/{p12}/;s/{p21}/{p22}/;s/{p31}/{p32}/' /etc/cassandra/cassandra.yaml && sed -i 's/{p31}/{p32}/' /etc/cassandra/cassandra-env.sh".format(**ports_map)
     if is_seed:
-      cmd += ' && cd ${MESOS_SANDBOX}/cassandra-schema && ./apply_schema.sh & start'
+      cmd += " && cd ${MESOS_SANDBOX}/cassandra-schema && sed -i '2i sleep 20' apply_schema.sh && ./apply_schema.sh & /docker-entrypoint.sh cassandra -f"
     else:
-      cmd += ' && start'
+      cmd += " && /docker-entrypoint.sh cassandra -f"
 
     labels = {
       '_tonomi_application': 'cassandra',
@@ -278,18 +287,18 @@ class CassandraNode(Node):
       labels['_tonomi_environment'] = self.env_name
 
     env = {
-      'SEEDS': '',
+      'CASSANDRA_SEEDS': '',
       'CASSANDRA_PORT': str(ports[9042])
     }
 
     uris = ['https://s3-us-west-1.amazonaws.com/streaming-artifacts/mk-cassandra-schema.tar.gz']
 
-    super().__init__(name, image='poklet/cassandra', volumes=volumes, network='HOST', labels=labels, cmd=cmd,
+    super().__init__(name, image='cassandra:3.7', volumes=volumes, network='HOST', labels=labels, cmd=cmd,
                      constraints=constraints, residency=residency, env=env, health_checks=health_checks,
-                     uris=uris, cpus=0.5, mem=400, instances=1, disk=512)
+                     uris=uris, cpus=0.5, mem=2512, instances=1, disk=512)
 
   def set_seeds(self, seeds=''):
-    self.app.env['SEEDS'] = seeds
+    self.app.env['CASSANDRA_SEEDS'] = seeds
 
 
 class Cassandra(Application):
@@ -305,14 +314,16 @@ class Cassandra(Application):
     self.ports = ports
     self.env_name = env_name
 
-    self.seed_app = CassandraNode(name='{}/{}'.format(self.name, 'cassandra-seed'),
+    self.seed_app = CassandraNode(name='{}/{}'.format(self.name, 'cassandra-seed'), is_seed=True,
                                   ports=self.ports, env_name=self.env_name) if not seed_app else seed_app
 
-    self.node_app = CassandraNode(name='{}/{}'.format(self.name, 'cassandra-node', is_seed=False),
+    self.node_app = CassandraNode(name='{}/{}'.format(self.name, 'cassandra-node'), is_seed=False,
                                   ports=self.ports, env_name=self.env_name) if not node_app else node_app
 
   def _create(self, client):
     client.create_app(self.seed_app.name, self.seed_app._get_entity())
+
+    time.sleep(5)
 
     seed_host = ''
     while True:
@@ -336,8 +347,8 @@ class KafkaBroker(Node):
 
     volume_name = get_volume_name(name)
     volumes = [
-      MarathonContainerVolume(container_path=volume_name, host_path=None, mode='RW', persistent={'size': 512}),
-      MarathonContainerVolume(container_path='/var/lib/kafka', host_path=volume_name, mode='RW', persistent=None)
+      MarathonContainerVolume(container_path=volume_name, mode='RW', persistent={'size': 512}),
+      MarathonContainerVolume(container_path='/kafka', host_path=volume_name, mode='RW')
     ]
 
     port_mappings = [
@@ -365,8 +376,8 @@ class KafkaBroker(Node):
 
     health_checks = [get_health_check(port=port)]
 
-    super().__init__(name, image='wurstmeister/kafka', network='BRIDGE', labels=labels, cmd=cmd,
-                     env=env, health_checks=health_checks, cpus=0.4, mem=300, instances=3,
+    super().__init__(name, image='wurstmeister/kafka:0.10.1.0', network='BRIDGE', labels=labels, cmd=cmd,
+                     env=env, health_checks=health_checks, cpus=0.5, mem=512, instances=3,
                      disk=256, volumes=volumes, port_mappings=port_mappings, residency=residency,
                      constraints=constraints)
 
@@ -473,17 +484,17 @@ class SparkNode(Node):
       'REDIS_PORT': str(self.redis_port)
     }
 
-    cmd = 'cd ${MESOS_SANDBOX} && bash ./streaming-runner.sh'
+    cmd = 'cd ${MESOS_SANDBOX}/dictionary-populator && bash populator-runner.sh && cd ${MESOS_SANDBOX}/in-stream-tweets-analyzer && bash streaming-runner.sh'
 
     uris = [
-      'https://s3-us-west-1.amazonaws.com/streaming-artifacts/in-stream-tweets-analyzer.tar.gz',
+      'https://s3-us-west-1.amazonaws.com/streaming-artifacts/in-stream-tweets-analyzer-latest.tar.gz',
       'https://s3-us-west-1.amazonaws.com/streaming-artifacts/dictionary-populator.tar.gz'
     ]
 
     health_checks = [get_health_check(protocol='HTTP', port_index=2)]
 
     super().__init__(name, image='sequenceiq/spark:1.6.0', network='BRIDGE', labels=labels, cmd=cmd,
-                     env=env, health_checks=health_checks, cpus=0.5, mem=500, instances=1,
+                     env=env, health_checks=health_checks, cpus=0.7, mem=1024, instances=1,
                      disk=512, port_mappings=port_mappings, uris=uris)
 
 

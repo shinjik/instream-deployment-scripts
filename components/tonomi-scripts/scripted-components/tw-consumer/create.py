@@ -5,6 +5,7 @@ import yaml
 from utils import *
 from models import *
 from marathon import MarathonClient
+from marathon.models import MarathonHealthCheck
 
 args = parse_args()
 marathon_client = MarathonClient(get_marathon_url(args))
@@ -34,7 +35,12 @@ for instance_id, app in args['launch-instances'].items():
   uris = ['https://s3-us-west-1.amazonaws.com/streaming-artifacts/twitter-consumer.tar.gz']
   name = '{}/{}'.format(instance_name, ''.join([i for i in movie if i.isalpha() or i == ' ']).lower().replace(' ', '-'))
 
-  consumer_app = Node(name=name, image='java:8', labels=labels, cmd=cmd, env=env, uris=uris, cpus=0.1, mem=256, disk=0)
+  health_checks = [MarathonHealthCheck(grace_period_seconds=300, interval_seconds=60, max_consecutive_failures=3,
+                                       protocol='COMMAND', timeout_seconds=20, ignore_http1xx=False,
+                                       command='test ! -z "$(ps ax|egrep "(twitter-consumer)*.(jar)"|grep -v grep)"')]
+
+  consumer_app = Node(name=name, image='java:8', labels=labels, cmd=cmd, env=env, uris=uris, cpus=0.1, mem=256, disk=0,
+                      health_checks=health_checks)
   marathon_client.create_app(name, consumer_app.app)
 
   instances[instance_name] = {

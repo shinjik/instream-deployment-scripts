@@ -11,6 +11,7 @@
 
     - role: ansible-mesos
       mesos_install_mode: master
+      mesos_work_dir: "/mnt/mesos"
       mesos_quorum: 1
       zookeeper_hostnames: "{{ groups.mesos_masters | join(':' + zookeeper_client_port + ',') }}:{{ zookeeper_client_port }}"
       mesos_hostname: "{{ ansible_default_ipv4.address }}"
@@ -52,6 +53,7 @@
 
     - role: ansible-mesos
       mesos_install_mode: slave
+      mesos_work_dir: "/mnt/mesos"
       mesos_quorum: 1
       mesos_hostname: "{{ ansible_default_ipv4.address }}"
       zookeeper_hostnames: "{{ groups.mesos_masters | join(':' + zookeeper_client_port + ',')  }}:{{ zookeeper_client_port  }}"

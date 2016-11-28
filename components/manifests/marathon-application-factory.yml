@@ -9,7 +9,7 @@ application:
   configuration:
     component.application: "Marathon Application"
     component.discoveryScript: /marathon/discover.py
-    component.discoverySchedule: "0/30 * * * * ? *"
+    component.discoverySchedule: "0 0/2 * * * ? *"
   components:
     factory:
       type: scripted.ComponentFactory

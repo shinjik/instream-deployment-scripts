@@ -32,17 +32,18 @@ class MarathonManager(object):
 
     return list(apps)
 
-  def get_apps(self, app_type, env_name):
+  def get_apps(self, app_type, env_name, app_name=None):
     env_name = env_name.replace('/', '')
     apps = []
     for app in self._client.list_apps():
-      if ('_tonomi_environment', env_name) in app.labels.items() and ('_tonomi_application', app_type) in app.labels.items():
+      if ('_tonomi_environment', env_name) in app.labels.items() and ('_tonomi_application', app_type) in app.labels.items() \
+            and (not app_name or app_name in app.id):
         apps.append(app)
     return [self._client.get_app(app.id) for app in apps]
 
-  def get_app_host(self, app_type, env_name):
+  def get_app_host(self, app_type, env_name, app_name=None):
     while True:
-      apps = self.get_apps(app_type=app_type, env_name=env_name)
+      apps = self.get_apps(app_type=app_type, env_name=env_name, app_name=app_name)
       for app in apps:
         for task in app.tasks:
           host = task.host

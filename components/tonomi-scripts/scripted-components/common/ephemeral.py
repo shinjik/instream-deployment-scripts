@@ -21,8 +21,8 @@ class CassandraCommand(EphemeralApplication):
   def __init__(self, marathon_client, cass_host, cass_port, content=''):
     super().__init__()
     self.marathon_client = marathon_client
-    self.image = 'mesosphere/cqlsh:2.2.5'
-    self.cmd = 'echo "{}" > input.cql && cqlsh -f input.cql {} {}'.format(content, cass_host, cass_port)
+    self.image = 'cassandra:3.7'
+    self.cmd = 'apt-get update && apt-get install -y wget && echo "{}" > input.cql && cqlsh -f input.cql {} {}'.format(content, cass_host, cass_port)
 
 
 class CassandraAddMovie(CassandraCommand):

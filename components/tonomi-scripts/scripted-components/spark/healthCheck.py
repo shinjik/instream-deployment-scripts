@@ -13,6 +13,9 @@ for instance_name in args['instances'].keys():
   try:
     app = marathon_client.get_app('{}/spark-app'.format(instance_name))
 
+    if app.tasks_unhealthy > 0:
+      marathon_client.restart_app(app.id)
+
     status = {
       'flags': {
         'active': True,

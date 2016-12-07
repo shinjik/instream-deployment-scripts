@@ -58,7 +58,7 @@ for env_id, env in args['launch-instances'].items():
   manager.create(webui)
 
   # 7. spark app
-  redis_host = manager.get_app_host(app_type='redis', env_name=short_env_name)
+  redis_host = manager.get_app_host(app_type='redis', env_name=short_env_name, app_name='redis-master')
   kafka_host = manager.get_app_host(app_type='kafka', env_name=short_env_name)
   spark = Spark(name='{}/spark'.format(env_name),
                 cassandra_host=cassandra_host, cassandra_port=cassandra_port,

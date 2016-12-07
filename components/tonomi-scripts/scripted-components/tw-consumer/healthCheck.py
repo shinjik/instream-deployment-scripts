@@ -10,8 +10,7 @@ marathon_client = get_marathon_client(args)
 instances = {}
 
 for instance_name in args['instances'].keys():
-
-  # try:
+  try:
     group = marathon_client.get_group(instance_name)
     app = marathon_client.get_app(group.apps[0].id)
 
@@ -39,15 +38,15 @@ for instance_name in args['instances'].keys():
       'interfaces': interfaces,
       'components': {},
     }
-  # except:
-  #   instances[instance_name] = {
-  #     'status': {
-  #       'flags': {
-  #         'active': False,
-  #         'converging': False,
-  #         'failed': False
-  #       }
-  #     }
-  #   }
+  except:
+    instances[instance_name] = {
+      'status': {
+        'flags': {
+          'active': False,
+          'converging': False,
+          'failed': False
+        }
+      }
+    }
 
 return_instances_info(instances)

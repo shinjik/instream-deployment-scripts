@@ -9,7 +9,7 @@ args = parse_args()
 manager = MarathonManager(get_marathon_url(args))
 instances = {}
 
-for instance_name in manager.discover(app_filter='tw-consumer'):
+for instance_name in manager.discover(app_filter='twitter-consumer'):
   instances[instance_name] = {
     'name': instance_name,
     'interfaces': {

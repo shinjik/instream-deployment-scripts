@@ -49,9 +49,12 @@ for instance_id, app in args['launch-instances'].items():
   add_movie = CassandraAddMovie(marathon_client, cassandra_host, cassandra_port, movie)
   add_movie.commit()
 
-  time.sleep(15)
+  time.sleep(7)
 
-  marathon_client.create_app(name, consumer_app.app)
+  try:
+    marathon_client.create_app(name, consumer_app.app)
+  except:
+    pass
 
   instances[instance_name] = {
     'instanceId': instance_id,

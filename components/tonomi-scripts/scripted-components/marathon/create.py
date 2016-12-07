@@ -51,6 +51,7 @@ for instance_id, app in args['launch-instances'].items():
 
   instances[instance_name] = {
     'instanceId': instance_id,
+    'name': instance_name,
     '$set': {
       'status.flags.converging': True,
       'status.flags.active': False

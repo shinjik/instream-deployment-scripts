@@ -4,6 +4,7 @@ import sys
 import yaml
 from marathon import MarathonClient
 from utils import *
+import time
 
 args = parse_args()
 marathon_client = get_marathon_client(args)
@@ -13,8 +14,9 @@ for instance_name in args['instances'].keys():
   try:
     app = marathon_client.get_app('{}/spark-app'.format(instance_name))
 
-    if app.tasks_unhealthy > 0:
+    if app.tasks_healthy == 0:
       marathon_client.restart_app(app.id)
+      time.sleep(7)
 
     status = {
       'flags': {

@@ -14,7 +14,7 @@ instances = {}
 for instance_name in sorted(args['instances'].keys()):
   try:
     seed_app = marathon_client.get_app('{}/cassandra-seed'.format(instance_name))
-    # node_app = marathon_client.get_app('/{}/cassandra-node'.format(env_name))
+    node_app = marathon_client.get_app('{}/cassandra-node'.format(instance_name))
 
     status = {
       'flags': {
@@ -25,20 +25,20 @@ for instance_name in sorted(args['instances'].keys()):
     }
 
     seed_tasks_running = seed_app.tasks_running
-    # node_tasks_running = node_app.tasks_running
+    node_tasks_running = node_app.tasks_running
 
     interfaces = {
       'compute': {
         'signals': {
-          'ram': seed_app.mem * seed_tasks_running,  # + node_app.mem * node_tasks_running,
-          'cpu': seed_app.cpus * seed_tasks_running,  # + node_app.cpus * node_tasks_running,
-          'disk': seed_app.disk * seed_tasks_running  # + node_app.disk * node_tasks_running
+          'ram': seed_app.mem * seed_tasks_running + node_app.mem * node_tasks_running,
+          'cpu': seed_app.cpus * seed_tasks_running + node_app.cpus * node_tasks_running,
+          'disk': seed_app.disk * seed_tasks_running + node_app.disk * node_tasks_running
         }
       },
       'cassandra': {
         'signals': {
           'seed-hosts': [seed_task.host for seed_task in seed_app.tasks],
-          'node-hosts': [],  # [node_task.host for node_task in node_app.tasks],
+          'node-hosts': [node_task.host for node_task in node_app.tasks],
           'jmx-port': seed_app.labels['_jmx_port'],
           'internode-communication-port': seed_app.labels['_internode_communication_port'],
           'tls-internode-communication-port': seed_app.labels['_tls_internode_communication_port'],

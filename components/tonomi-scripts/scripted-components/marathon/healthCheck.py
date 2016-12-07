@@ -23,21 +23,13 @@ for instance_name in sorted(list(args['instances'].keys())):
     }
 
     tasks = [{'taskId': task.id, 'host': task.host, 'state': task.state} for task in app.tasks]
-    port_mappings = {pm.container_port: pm.service_port for pm in app.container.docker.port_mappings}
+    port_mappings = [{'containerPort': pm.container_port, 'hostPort': pm.host_port, 'servicePort': pm.service_port} for pm in app.container.docker.port_mappings]
 
     interfaces = {
-      'info': {
-        'signals': {
-          'app-id': app.id,
-          'ram': app.mem,
-          'cpu': app.cpus,
-          'num_instances': app.instances
-        }
-      },
       'compute': {
         'signals': {
           'ram': app.mem,
-          'cpu': app.cpus,
+          'cpu': str(app.cpus),
           'disk': app.disk,
           'instances': app.instances,
           'portMappings': port_mappings,
@@ -56,7 +48,7 @@ for instance_name in sorted(list(args['instances'].keys())):
       'name': instance_name,
       'status': status,
       'interfaces': interfaces,
-      'components': {},
+      'components': {}
     }
 
   except:

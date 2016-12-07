@@ -45,10 +45,6 @@ for env_id, env in args['launch-instances'].items():
                 port=kafka_port, env_name=short_env_name)
   manager.create(kafka)
 
-  # TODO: populate apps!
-  # 5. redis <- dictionaries,
-  #    cassandra <- schema + movies list!
-
   # 6. web ui
   cassandra_host = manager.get_app_host(app_type='cassandra', env_name=short_env_name)
   cassandra_port = cassandra_ports[9042]

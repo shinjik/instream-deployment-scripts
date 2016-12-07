@@ -17,19 +17,19 @@ application:
         configuration:
           marathonURL: configuration(string)
         zookeeper:
-          zookeeper-by-id: consume-signal(map<string,string>)
+          zookeeper-by-id: consume-signal(map<string, string>)
         redis:
-          redis-by-id:     consume-signal(map<string,string>)
+          redis-by-id:     consume-signal(map<string, string>)
         cassandra:
-          cassandra-by-id: consume-signal(map<string,string>)
+          cassandra-by-id: consume-signal(map<string, string>)
         kafka:
-          kafka-by-id:     consume-signal(map<string,string>)
+          kafka-by-id:     consume-signal(map<string, string>)
         webui:
-          webui-by-id:     consume-signal(map<string,string>)
+          webui-by-id:     consume-signal(map<string, string>)
         spark:
-          spark-by-id:     consume-signal(map<string,string>)
+          spark-by-id:     consume-signal(map<string, string>)
         isp-environments:
-          env-by-id:       consume-signal(map<string,string>)
+          env-by-id:       consume-signal(map<string, string>)
     scripting:
       type: reference.Service
       interfaces:
@@ -39,32 +39,32 @@ application:
       type: reference.Service
       interfaces:
         apps:
-          zookeeper-by-id: publish-signal(map<string,string>)
+          zookeeper-by-id: publish-signal(map<string, string>)
     redis:
       type: reference.Service
       interfaces:
         apps:
-          redis-by-id: publish-signal(map<string,string>)
+          redis-by-id: publish-signal(map<string, string>)
     cassandra:
       type: reference.Service
       interfaces:
         apps:
-          cassandra-by-id: publish-signal(map<string,string>)
+          cassandra-by-id: publish-signal(map<string, string>)
     kafka:
       type: reference.Service
       interfaces:
         apps:
-          kafka-by-id: publish-signal(map<string,string>)
+          kafka-by-id: publish-signal(map<string, string>)
     webui:
       type: reference.Service
       interfaces:
         apps:
-          webui-by-id: publish-signal(map<string,string>)
+          webui-by-id: publish-signal(map<string, string>)
     spark:
       type: reference.Service
       interfaces:
         apps:
-          spark-by-id: publish-signal(map<string,string>)
+          spark-by-id: publish-signal(map<string, string>)
   bindings:
     - [factory, zookeeper]
     - [factory, redis]

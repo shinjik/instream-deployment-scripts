@@ -10,7 +10,6 @@ marathon_client = get_marathon_client(args)
 instances = {}
 
 for instance_name in args['instances'].keys():
-
   try:
     app = marathon_client.get_app('{}/webui-app'.format(instance_name))
 

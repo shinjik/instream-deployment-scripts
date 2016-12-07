@@ -16,6 +16,8 @@ application:
       interfaces:
         configuration:
           marathonURL: configuration(string)
+        apps:
+          app-by-id: consume-signal(map<string,string>)
     scripting:
       type: reference.Service
       interfaces:

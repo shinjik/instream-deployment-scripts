@@ -42,7 +42,7 @@ application:
             type: publish-signal(list<string>)
             name: Zookeeper hosts
           zookeeper-port:
-            type: publish-signal(string)
+            type: publish-signal(int)
             name: Zookeeper port
         redis:
           master-hosts:
@@ -52,7 +52,7 @@ application:
             type: publish-signal(list<string>)
             name: Redis slave hosts
           port:
-            type: publish-signal(string)
+            type: publish-signal(int)
             name: Redis port
         cassandra:
           seed-hosts:
@@ -62,16 +62,16 @@ application:
             type: publish-signal(list<string>)
             name: Node hosts
           jmx-port:
-            type: publish-signal(string)
+            type: publish-signal(int)
             name: JMX port
           internode-communication-port:
-            type: publish-signal(string)
+            type: publish-signal(int)
             name: Internode communication port
-          tls-internode-commucation-port:
-            type: publish-signal(string)
+          tls-internode-communication-port:
+            type: publish-signal(int)
             name: TLS internode communication port
           thrift-client-port:
-            type: publish-signal(string)
+            type: publish-signal(int)
             name: Thrift client port
           cql-native-port:
             type: publish-signal(string)
@@ -81,11 +81,11 @@ application:
             type: publish-signal(list<string>)
             name: Kafka hosts
           kafka-port:
-            type: publish-signal(string)
+            type: publish-signal(int)
             name: Kafka port
         webui:
           load-balancer-port:
-            type: publish-signal(string)
+            type: publish-signal(int)
             name: LB port
           link:
             type: publish-signal(string)
@@ -94,7 +94,7 @@ application:
             type: publish-signal(list<string>)
             name: Hosts
           port:
-            type: publish-signal(string)
+            type: publish-signal(int)
             name: Port
         spark:
           hosts:

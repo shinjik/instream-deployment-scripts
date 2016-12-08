@@ -14,56 +14,56 @@ application:
     input.cpu_tag_hardware: "m3.large"
     input.memory_tag_hardware: "m3.large"
     input.disk_tag_hardware: "m3.large"
-    input.playbooks_url: "https://github.com/shinjik/instream-deployment-scripts/archive/master.zip"
+    input.playbooks_url: "https://s3-us-west-1.amazonaws.com/streaming-artifacts/mk-mesos-cluster.tar.gz"
     input.mesos_version: "0.28.2"
     input.mesos_package_version: "2.0.27"
     input.marathon_version: "1.1.2"
 
   interfaces:
     input:
-      ami: "bind(vms#input.ami, manager-node#input.ami)"
-      region: "bind(vms#input.region, manager-node#input.region)"
+      ami:      "bind(vms#input.ami, manager-node#input.ami)"
+      region:   "bind(vms#input.region, manager-node#input.region)"
       identity: "bind(vms#input.identity, manager-node#input.identity)"
 
       manager_hardware: "bind(manager-node#input.manager_hardware)"
-      master_hardware: "bind(vms#input.master_hardware)"
+      master_hardware:  "bind(vms#input.master_hardware)"
       masters_quantity: "bind(vms#input.masters_quantity)"
 
       slaves_general_hardware_quantity: "bind(vms#input.slaves_general_hardware_quantity)"
-      general_tag_hardware: "bind(vms#input.general_tag_hardware)"
-      slaves_cpu_hardware_quantity: "bind(vms#input.slaves_cpu_hardware_quantity)"
-      cpu_tag_hardware: "bind(vms#input.cpu_tag_hardware)"
-      slaves_memory_hardware_quantity: "bind(vms#input.slaves_memory_hardware_quantity)"
-      memory_tag_hardware: "bind(vms#input.memory_tag_hardware)"
-      slaves_disk_hardware_quantity: "bind(vms#input.slaves_disk_hardware_quantity)"
-      disk_tag_hardware: "bind(vms#input.disk_tag_hardware)"
+      general_tag_hardware:             "bind(vms#input.general_tag_hardware)"
+      slaves_cpu_hardware_quantity:     "bind(vms#input.slaves_cpu_hardware_quantity)"
+      cpu_tag_hardware:                 "bind(vms#input.cpu_tag_hardware)"
+      slaves_memory_hardware_quantity:  "bind(vms#input.slaves_memory_hardware_quantity)"
+      memory_tag_hardware:              "bind(vms#input.memory_tag_hardware)"
+      slaves_disk_hardware_quantity:    "bind(vms#input.slaves_disk_hardware_quantity)"
+      disk_tag_hardware:                "bind(vms#input.disk_tag_hardware)"
 
-      playbooks_url: "bind(manager-node#input.playbooks_url)"
-      mesos_version: "bind(vms#input.mesos_version)"
-      mesos_package_version: "bind(vms#input.mesos_package_version)"
-      marathon_version: "bind(vms#input.marathon_version)"
+      playbooks_url:          "bind(manager-node#input.playbooks_url)"
+      mesos_version:          "bind(vms#input.mesos_version)"
+      mesos_package_version:  "bind(vms#input.mesos_package_version)"
+      marathon_version:       "bind(vms#input.marathon_version)"
 
     Mesos:
-      application-pic: "bind(metadata#output.mesos-pic)"
-      manager: "bind(vms#result.Mesos_URL)"
+      application-pic:  "bind(metadata#output.mesos-pic)"
+      manager:          "bind(vms#result.Mesos_URL)"
 
-      slaves_with_general_tag: "bind(vms#result.mesos_slaves_with_general_tag)"
-      slaves_with_cpu_tag: "bind(vms#result.mesos_slaves_with_cpu_tag)"
-      slaves_with_memory_tag: "bind(vms#result.mesos_slaves_with_memory_tag)"
-      slaves_with_disk_tag: "bind(vms#result.mesos_slaves_with_disk_tag)"
+      slaves_with_general_tag:  "bind(vms#result.mesos_slaves_with_general_tag)"
+      slaves_with_cpu_tag:      "bind(vms#result.mesos_slaves_with_cpu_tag)"
+      slaves_with_memory_tag:   "bind(vms#result.mesos_slaves_with_memory_tag)"
+      slaves_with_disk_tag:     "bind(vms#result.mesos_slaves_with_disk_tag)"
 
-      force-scale-cluster: "bind(vms#actions.force-scale-cluster)"
-      scale-up: "bind(vms#actions.scale-up)"
-      scale-down: "bind(vms#actions.scale-down)"
+      force-scale-cluster:  "bind(vms#actions.force-scale-cluster)"
+      scale-up:             "bind(vms#actions.scale-up)"
+      scale-down:           "bind(vms#actions.scale-down)"
 
     Marathon:
-      application-pic: "bind(metadata#output.marathon-pic)"
-      manager: "bind(vms#result.Marathon_URL)"
+      application-pic:  "bind(metadata#output.marathon-pic)"
+      manager:          "bind(vms#result.Marathon_URL)"
 
     Manager:
-      manager-ip: "bind(manager-node#result.manager-ip)"
+      manager-ip:       "bind(manager-node#result.manager-ip)"
       update-playbooks: "bind(manager-node#actions.update-playbooks)"
-      run-ansible: "bind(manager-node#actions.run-ansible)"
+      run-ansible:      "bind(manager-node#actions.run-ansible)"
 
   bindings:
     - [manager-node, vms]
@@ -123,8 +123,8 @@ application:
             name: Update playbooks on manager node
             arguments:
               playbooks-url:
-                name: Github link to zip archive
-                default: "https://github.com/shinjik/instream-deployment-scripts/archive/master.zip"
+                name: AWS S3 link on tar.gz or github link to zipped repo
+                default: "https://s3-us-west-1.amazonaws.com/streaming-artifacts/mk-mesos-cluster.tar.gz"
           run-ansible:
             type: receive-command()
             name: Run ansible
@@ -230,15 +230,33 @@ application:
                     roles: [ "manager-node" ]
                     command:
                       - |
-                        rm -rf --preserve-root playbooks.zip &&
-                        wget "{$.playbooks-url}" -O playbooks.zip &&
-                        folder=`echo "{$.playbooks-url}" | cut -d/ -f 5` &&
-                        branch=`echo "{$.playbooks-url}" | sed -n 's/\(.*\)archive\/\(.*\).zip/\2/p'` &&
-                        rm -rf --preserve-root ./mesos-cluster &&
-                        rm -rf $${{folder}}-$${{branch}} &&
-                        unzip playbooks.zip &&
-                        mv $${{folder}}-$${{branch}}/mesos-cluster mesos-cluster &&
-                        rm -rf $${{folder}}-$${{branch}} &&
+                        rm -rf playbooks.zip playbooks.tar.gz &&
+                        case "{$.playbooks-url}" in
+                          *github\.com*\.zip)
+                            wget "{$.playbooks-url}" -O playbooks.zip &&
+                            folder=`echo "{$.playbooks-url}" | cut -d/ -f 5` &&
+                            branch=`echo "{$.playbooks-url}" | sed -n 's/\(.*\)archive\/\(.*\).zip/\2/p'` &&
+                            rm -rf mesos-cluster &&
+
+                            if [[ ! -z "$$branch" && ! -z "$$folder" ]]; then
+                              rm -rf $${{folder}}-$${{branch}} &&
+                              unzip playbooks.zip &&
+                              mv $${{folder}}-$${{branch}}/mesos-cluster mesos-cluster &&
+                              rm -rf $${{folder}}-$${{branch}}
+                            else
+                              mkdir mesos-cluster &&
+                              unzip playbooks.zip -d mesos-cluster
+                            fi
+                            ;;
+
+                          *\.tar\.gz*)
+                            wget "{$.playbooks-url}" -O playbooks.tar.gz &&
+                            rm -rf mesos-cluster &&
+                            mkdir mesos-cluster &&
+                            tar -zxvf playbooks.tar.gz -C mesos-cluster
+                            ;;
+                        esac &&
+
                         sudo ansible-galaxy install -r mesos-cluster/install-roles.yml &&
                         sudo chown -R ubuntu:ubuntu .ansible .ansible_galaxy
 

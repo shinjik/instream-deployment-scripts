@@ -30,8 +30,8 @@ application:
             name: Update scripts from github repo
             arguments:
               url:
-                name: "Link to zip archive of repo at github"
-                default: "https://github.com/shinjik/instream-deployment-scripts/archive/master.zip"
+                name: "Link to tar.gz at aws s3 or zip archive of repo at github"
+                default: "https://s3-us-west-1.amazonaws.com/streaming-artifacts/mk-components.tar.gz"
       configuration:
         docker.image: "{$.configuration.image}:{$.configuration.version}"
         docker.command: [ "sh", "-c", "while true; do sleep 1024d; done" ]
